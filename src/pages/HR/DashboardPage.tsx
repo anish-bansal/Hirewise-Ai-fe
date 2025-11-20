@@ -60,24 +60,28 @@ const DashboardPage = () => {
             ) : (
                 <div className="grid gap-4">
                     {jobs.map((job) => (
-                        <Card key={job.id} className="hover:bg-accent/5 transition-colors">
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <div className="space-y-1">
-                                    <CardTitle className="text-base font-medium">
-                                        <Link to={`/hr/jobs/${job.id}`} className="hover:underline">
+                        <Link 
+                            key={job.id} 
+                            to={`/hr/jobs/${job.id}`}
+                            className="block"
+                        >
+                            <Card className="cursor-pointer transition-all duration-300 hover:shadow-lg hover:scale-[1.02] hover:border-primary/20 hover:bg-accent/5 group">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <div className="space-y-1">
+                                        <CardTitle className="text-base font-medium group-hover:text-primary transition-colors">
                                             {job.role}
-                                        </Link>
-                                    </CardTitle>
-                                    <CardDescription>{job.company_name}</CardDescription>
-                                </div>
-                                <div className="text-sm text-muted-foreground">{job.status}</div>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-sm text-muted-foreground line-clamp-2">
-                                    {job.enhanced_jd || job.raw_jd}
-                                </div>
-                            </CardContent>
-                        </Card>
+                                        </CardTitle>
+                                        <CardDescription>{job.company_name}</CardDescription>
+                                    </div>
+                                    <div className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">{job.status}</div>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-sm text-muted-foreground line-clamp-2 group-hover:text-foreground/80 transition-colors">
+                                        {job.enhanced_jd || job.raw_jd}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </Link>
                     ))}
                 </div>
             )}
