@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import {
     Linkedin, Github, Mail, Phone, ExternalLink, MapPin,
     Building2, GraduationCap, Download, Share2,
-    Briefcase, Code2, Award, BookOpen
+    Briefcase, Code2, Award, BookOpen, DollarSign, Zap, FileText
 } from 'lucide-react';
 
 interface CandidateProfileDrawerProps {
@@ -33,6 +33,52 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
     const scores = candidate.scores || {};
     const unifiedScore = scores.unifiedScore || candidate.matchScore || candidate.alignmentScore;
     const resumeScore = scores.resumeScore || candidate.resumeScore;
+    const githubScore = scores.githubPortfolioScore;
+    const compensationScore = scores.compensationScore;
+    const compensationAnalysis = scores.compensationAnalysis;
+
+    const scoreItems = [
+        {
+            id: 'unified',
+            label: 'Overall Match',
+            value: unifiedScore,
+            icon: Zap,
+            color: 'text-purple-600',
+            bg: 'bg-purple-100',
+            barColor: 'bg-purple-600',
+            description: 'Combined score based on all factors'
+        },
+        {
+            id: 'resume',
+            label: 'Resume Score',
+            value: resumeScore,
+            icon: FileText,
+            color: 'text-blue-600',
+            bg: 'bg-blue-100',
+            barColor: 'bg-blue-600',
+            description: 'Based on skills and experience match'
+        },
+        {
+            id: 'github',
+            label: 'GitHub / Portfolio',
+            value: githubScore,
+            icon: Github,
+            color: 'text-gray-700',
+            bg: 'bg-gray-100',
+            barColor: 'bg-gray-800',
+            description: 'Code quality and project impact'
+        },
+        {
+            id: 'compensation',
+            label: 'Compensation',
+            value: compensationScore,
+            icon: DollarSign,
+            color: 'text-green-600',
+            bg: 'bg-green-100',
+            barColor: 'bg-green-600',
+            description: compensationAnalysis || 'Salary expectation alignment'
+        }
+    ].filter(item => item.value !== undefined && item.value !== null);
 
     const socialLinks = {
         linkedin: contact.linkedin || candidate.candidate?.linkedin || candidate.socialLinks?.linkedin,
@@ -152,46 +198,45 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
                 <div className="flex-1 overflow-y-auto p-8 bg-gray-50/50">
                     {activeTab === 'overview' && (
                         <div className="space-y-8">
-                            {/* Scores Section */}
-                            {(unifiedScore !== undefined || resumeScore !== undefined) && (
-                                <section className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Match Analysis</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {unifiedScore !== undefined && (
-                                            <div>
-                                                <div className="flex justify-between mb-2">
-                                                    <span className="text-sm font-medium text-gray-700">Overall Match</span>
-                                                    <span className="text-sm font-bold text-purple-600">{Math.round(unifiedScore)}%</span>
+                            {/* Premium Scores Section */}
+                            <section>
+                                <h3 className="text-lg font-semibold text-gray-900 mb-4">Match Analysis</h3>
+                                <div className="flex flex-col gap-4">
+                                    {scoreItems.map((item, index) => (
+                                        <motion.div
+                                            key={item.id}
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: index * 0.1, duration: 0.4 }}
+                                            className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative overflow-hidden group"
+                                        >
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`p-2 rounded-lg ${item.bg} ${item.color}`}>
+                                                        <item.icon className="h-5 w-5" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-medium text-gray-600">{item.label}</p>
+                                                        <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{item.description}</p>
+                                                    </div>
                                                 </div>
-                                                <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                                                    <motion.div
-                                                        initial={{ width: 0 }}
-                                                        animate={{ width: `${unifiedScore}%` }}
-                                                        transition={{ duration: 1, ease: "easeOut" }}
-                                                        className="h-full bg-purple-600 rounded-full"
-                                                    />
-                                                </div>
+                                                <span className={`text-2xl font-bold ${item.color}`}>
+                                                    {Math.round(item.value)}%
+                                                </span>
                                             </div>
-                                        )}
-                                        {resumeScore !== undefined && (
-                                            <div>
-                                                <div className="flex justify-between mb-2">
-                                                    <span className="text-sm font-medium text-gray-700">Resume Score</span>
-                                                    <span className="text-sm font-bold text-blue-600">{Math.round(resumeScore)}%</span>
-                                                </div>
-                                                <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                                                    <motion.div
-                                                        initial={{ width: 0 }}
-                                                        animate={{ width: `${resumeScore}%` }}
-                                                        transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
-                                                        className="h-full bg-blue-600 rounded-full"
-                                                    />
-                                                </div>
+
+                                            <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                                                <motion.div
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${item.value}%` }}
+                                                    transition={{ duration: 1, ease: "easeOut", delay: 0.2 + (index * 0.1) }}
+                                                    className={`h-full rounded-full ${item.barColor}`}
+                                                />
                                             </div>
-                                        )}
-                                    </div>
-                                </section>
-                            )}
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            </section>
 
                             {/* Summary */}
                             <section className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
