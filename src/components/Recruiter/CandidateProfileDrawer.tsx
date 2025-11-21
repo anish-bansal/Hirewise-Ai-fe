@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import {
     Linkedin, Github, Mail, Phone, ExternalLink, MapPin,
     Building2, GraduationCap, Download, Share2,
-    Briefcase, Code2, Award, BookOpen, DollarSign, Zap, FileText
+    Briefcase, Code2, Award, BookOpen, DollarSign, Zap, FileText, Check, X
 } from 'lucide-react';
 
 interface CandidateProfileDrawerProps {
@@ -31,10 +31,10 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
     const skills = parsedResume.skills || {};
 
     const scores = candidate.scores || {};
-    const unifiedScore = scores.unifiedScore || candidate.matchScore || candidate.alignmentScore;
-    const resumeScore = scores.resumeScore || candidate.resumeScore;
-    const githubScore = scores.githubPortfolioScore;
-    const compensationScore = scores.compensationScore;
+    const unifiedScore = scores.unifiedScore ?? candidate.matchScore ?? candidate.alignmentScore ?? null;
+    const resumeScore = scores.resumeScore ?? candidate.resumeScore ?? null;
+    const githubScore = scores.githubPortfolioScore ?? null;
+    const compensationScore = scores.compensationScore ?? null;
     const compensationAnalysis = scores.compensationAnalysis;
 
     const scoreItems = [
@@ -45,7 +45,7 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
             icon: Zap,
             color: 'text-purple-600',
             bg: 'bg-purple-100',
-            barColor: 'bg-purple-600',
+            barColor: 'text-purple-600',
             description: 'Combined score based on all factors'
         },
         {
@@ -55,7 +55,7 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
             icon: FileText,
             color: 'text-blue-600',
             bg: 'bg-blue-100',
-            barColor: 'bg-blue-600',
+            barColor: 'text-blue-600',
             description: 'Based on skills and experience match'
         },
         {
@@ -65,7 +65,7 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
             icon: Github,
             color: 'text-gray-700',
             bg: 'bg-gray-100',
-            barColor: 'bg-gray-800',
+            barColor: 'text-gray-800',
             description: 'Code quality and project impact'
         },
         {
@@ -75,10 +75,10 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
             icon: DollarSign,
             color: 'text-green-600',
             bg: 'bg-green-100',
-            barColor: 'bg-green-600',
+            barColor: 'text-green-600',
             description: compensationAnalysis || 'Salary expectation alignment'
         }
-    ].filter(item => item.value !== undefined && item.value !== null);
+    ].filter(item => item.value !== undefined && item.value !== null || item.value === null); // Keep nulls for NA handling
 
     const socialLinks = {
         linkedin: contact.linkedin || candidate.candidate?.linkedin || candidate.socialLinks?.linkedin,
@@ -122,14 +122,23 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
                                 </p>
                             </div>
                         </div>
-                        <div className="flex gap-2">
-                            <Button variant="outline" size="sm" className="gap-2">
-                                <Share2 className="h-4 w-4" />
-                                Share
+                        <div className="flex items-center gap-2">
+                            <Button variant="outline" size="sm" className="gap-2 rounded-full text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 transition-colors">
+                                <X className="h-4 w-4" />
+                                Not Suitable
                             </Button>
-                            <Button size="sm" className="gap-2">
+                            <Button size="sm" className="gap-2 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white border-transparent shadow-sm transition-all hover:shadow-md">
+                                <Check className="h-4 w-4" />
+                                Approve
+                            </Button>
+
+                            <div className="h-6 w-px bg-gray-200 mx-1" />
+
+                            <Button variant="ghost" size="icon" className="rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100">
+                                <Share2 className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100">
                                 <Download className="h-4 w-4" />
-                                Resume
                             </Button>
                         </div>
                     </div>
@@ -201,40 +210,70 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
                             {/* Premium Scores Section */}
                             <section>
                                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Match Analysis</h3>
-                                <div className="flex flex-col gap-4">
-                                    {scoreItems.map((item, index) => (
-                                        <motion.div
-                                            key={item.id}
-                                            initial={{ opacity: 0, y: 20 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: index * 0.1, duration: 0.4 }}
-                                            className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative overflow-hidden group"
-                                        >
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`p-2 rounded-lg ${item.bg} ${item.color}`}>
-                                                        <item.icon className="h-5 w-5" />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {scoreItems.map((item, index) => {
+                                        const isNA = item.value === null || item.value === undefined;
+                                        const scoreValue = isNA ? 0 : Math.round(item.value);
+                                        const circumference = 2 * Math.PI * 24; // radius 24
+
+                                        return (
+                                            <motion.div
+                                                key={item.id}
+                                                initial={{ opacity: 0, y: 20 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ delay: index * 0.1, duration: 0.4 }}
+                                                className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex items-center justify-between group"
+                                            >
+                                                <div className="flex items-center gap-4 overflow-hidden">
+                                                    <div className={`p-3 rounded-xl ${item.bg} ${item.color} flex-shrink-0`}>
+                                                        <item.icon className="h-6 w-6" />
                                                     </div>
-                                                    <div>
-                                                        <p className="text-sm font-medium text-gray-600">{item.label}</p>
-                                                        <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{item.description}</p>
+                                                    <div className="min-w-0">
+                                                        <p className="text-base font-semibold text-gray-900 truncate">{item.label}</p>
+                                                        <p className="text-sm text-gray-500 mt-0.5 line-clamp-1">{item.description}</p>
                                                     </div>
                                                 </div>
-                                                <span className={`text-2xl font-bold ${item.color}`}>
-                                                    {Math.round(item.value)}%
-                                                </span>
-                                            </div>
 
-                                            <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-                                                <motion.div
-                                                    initial={{ width: 0 }}
-                                                    animate={{ width: `${item.value}%` }}
-                                                    transition={{ duration: 1, ease: "easeOut", delay: 0.2 + (index * 0.1) }}
-                                                    className={`h-full rounded-full ${item.barColor}`}
-                                                />
-                                            </div>
-                                        </motion.div>
-                                    ))}
+                                                <div className="relative h-16 w-16 flex items-center justify-center flex-shrink-0">
+                                                    {/* Background Circle */}
+                                                    <svg className="h-full w-full" viewBox="0 0 64 64">
+                                                        <circle
+                                                            cx="32"
+                                                            cy="32"
+                                                            r="24"
+                                                            stroke="currentColor"
+                                                            strokeWidth="4"
+                                                            fill="transparent"
+                                                            className="text-gray-100"
+                                                        />
+                                                        {/* Progress Circle */}
+                                                        {!isNA && (
+                                                            <motion.circle
+                                                                cx="32"
+                                                                cy="32"
+                                                                r="24"
+                                                                stroke="currentColor"
+                                                                strokeWidth="4"
+                                                                fill="transparent"
+                                                                className={item.barColor}
+                                                                strokeDasharray={circumference}
+                                                                initial={{ strokeDashoffset: circumference }}
+                                                                animate={{ strokeDashoffset: circumference - (scoreValue / 100) * circumference }}
+                                                                transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 + (index * 0.1) }}
+                                                                strokeLinecap="round"
+                                                                transform="rotate(-90 32 32)"
+                                                            />
+                                                        )}
+                                                    </svg>
+                                                    <div className="absolute inset-0 flex items-center justify-center">
+                                                        <span className={`text-sm font-bold ${isNA ? 'text-gray-400' : item.color}`}>
+                                                            {isNA ? 'NA' : `${scoreValue}%`}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </motion.div>
+                                        );
+                                    })}
                                 </div>
                             </section>
 
