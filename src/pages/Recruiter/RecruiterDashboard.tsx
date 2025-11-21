@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react';
 import { applicationsApi, type Application } from '../../api/applications';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
-import { CandidateCard } from '../../components/CandidateCard';
+import { CandidateCard } from '../../components/Recruiter/CandidateCard';
 import { Loader2 } from 'lucide-react';
 import { SearchBox } from '../../components/Recruiter/SearchBox';
 import { ResultSummary } from '../../components/Recruiter/ResultSummary';
 import { FilterDrawer } from '../../components/Recruiter/FilterDrawer';
+import { searchApi, type CandidateProfile } from '../../api/search';
+import { ResultsHeader } from '../../components/Recruiter/ResultsHeader';
+import { CandidateProfileDrawer } from '../../components/Recruiter/CandidateProfileDrawer';
 
 const RecruiterDashboard = () => {
     const [applications, setApplications] = useState<Application[]>([]);
@@ -17,6 +20,12 @@ const RecruiterDashboard = () => {
     const [hasSearched, setHasSearched] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+    const [isSearching, setIsSearching] = useState(false);
+    const [searchResults, setSearchResults] = useState<CandidateProfile[]>([]);
+    const [matchCount, setMatchCount] = useState(0);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize] = useState(15);
+    const [isAllSelected, setIsAllSelected] = useState(false);
     const [filters, setFilters] = useState({
         jobTitle: '',
         location: '',
@@ -40,33 +49,114 @@ const RecruiterDashboard = () => {
         fetchApplications();
     }, []);
 
-    const handleSearch = (query: string) => {
+    const handleSearch = async (query: string, page: number = 1) => {
         setSearchQuery(query);
         setHasSearched(true);
+        setIsSearching(true);
+        setCurrentPage(page);
 
-        // Parse query to auto-populate filters (mock logic)
-        if (query.toLowerCase().includes('software engineer')) {
-            setFilters(prev => ({ ...prev, jobTitle: 'Software Engineer', skills: ['Python', 'Node.js'] }));
-        } else if (query.toLowerCase().includes('marketing')) {
-            setFilters(prev => ({ ...prev, jobTitle: 'Marketing Manager', location: 'Europe' }));
+        try {
+            // Call the search API
+            const response = await searchApi.search(query, page, pageSize);
+
+            // Log the response for debugging
+            console.log('Search API Response:', response);
+
+            // Handle different response structures
+            // Check if response is an array directly
+            let candidates: CandidateProfile[] = [];
+            let total = 0;
+
+            if (Array.isArray(response)) {
+                // Response is directly an array
+                candidates = response;
+                total = response.length;
+            } else if (response.candidates) {
+                candidates = Array.isArray(response.candidates) ? response.candidates : [];
+                total = response.total || response.totalMatches || response.count || candidates.length;
+            } else if (response.users) {
+                candidates = Array.isArray(response.users) ? response.users : [];
+                total = response.total || response.totalMatches || response.count || candidates.length;
+            } else if (response.data) {
+                // Some APIs wrap data in a 'data' field
+                candidates = Array.isArray(response.data) ? response.data : [];
+                total = response.total || response.totalMatches || response.count || candidates.length;
+            } else {
+                // Try to find any array field in the response
+                const responseKeys = Object.keys(response);
+                const arrayKey = responseKeys.find(key => Array.isArray((response as any)[key]));
+                if (arrayKey) {
+                    candidates = (response as any)[arrayKey];
+                    total = response.total || response.totalMatches || response.count || candidates.length;
+                }
+            }
+
+            console.log('Parsed candidates:', candidates);
+            console.log('Total count:', total);
+
+            // Update search results
+            setSearchResults(candidates);
+            setMatchCount(total);
+
+            // Update filters from API response if provided
+            if ('filters' in response && response.filters) {
+                setFilters({
+                    jobTitle: response.filters.jobTitle || '',
+                    location: response.filters.location || '',
+                    experience: response.filters.experience || '',
+                    skills: response.filters.skills || []
+                });
+            } else {
+                // Fallback: parse query to auto-populate filters
+                if (query.toLowerCase().includes('software engineer')) {
+                    setFilters(prev => ({ ...prev, jobTitle: 'Software Engineer', skills: ['Python', 'Node.js'] }));
+                } else if (query.toLowerCase().includes('marketing')) {
+                    setFilters(prev => ({ ...prev, jobTitle: 'Marketing Manager', location: 'Europe' }));
+                }
+            }
+        } catch (error: any) {
+            console.error('Search failed:', error);
+            console.error('Error details:', {
+                message: error?.message,
+                stack: error?.stack,
+                response: error?.response
+            });
+
+            // On error, show empty results
+            setSearchResults([]);
+            setMatchCount(0);
+
+            // Show user-friendly error message
+            if (error?.message) {
+                alert(`Search error: ${error.message}. Please check the console for more details.`);
+            }
+        } finally {
+            setIsSearching(false);
         }
     };
 
     const handleUpdateFilters = (newFilters: any) => {
         setFilters(prev => ({ ...prev, ...newFilters }));
         setIsFilterDrawerOpen(false);
-        // In a real app, we would re-fetch data here
+        // Re-run search with updated filters
+        if (hasSearched && searchQuery) {
+            handleSearch(searchQuery);
+        }
     };
 
-    // Filter applications based on current filters (Client-side mock)
-    const filteredApplications = applications.filter(app => {
-        if (!hasSearched) return true;
+    const handleRunSearch = () => {
+        if (searchQuery) {
+            handleSearch(searchQuery, currentPage);
+        }
+    };
 
-        // Simple mock filtering logic
-        if (filters.jobTitle && !app.tags.some(t => t.toLowerCase().includes(filters.jobTitle.toLowerCase()) || app.resumePreview.toLowerCase().includes(filters.jobTitle.toLowerCase()))) return false;
-        // Add more complex filtering here if needed for demo
-        return true;
-    });
+    const handlePageChange = (page: number) => {
+        if (searchQuery) {
+            handleSearch(searchQuery, page);
+        }
+    };
+
+    const [selectedCandidateForDrawer, setSelectedCandidateForDrawer] = useState<CandidateProfile | null>(null);
 
     return (
         <div className="min-h-screen bg-gray-50/50 -m-6 p-6">
@@ -97,37 +187,80 @@ const RecruiterDashboard = () => {
 
                             <ResultSummary
                                 query={searchQuery}
-                                matchCount={filteredApplications.length}
+                                matchCount={matchCount}
                                 filters={filters}
                                 onEditFilters={() => setIsFilterDrawerOpen(true)}
-                                onRunSearch={() => { }}
+                                onRunSearch={handleRunSearch}
                             />
                         </div>
 
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            {isLoading ? (
-                                <div className="col-span-full flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
-                            ) : filteredApplications.map((app) => (
-                                <Card key={app.id} className="cursor-pointer hover:bg-accent/5 transition-colors" onClick={() => setSelectedApp(app)}>
-                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                        <CardTitle className="text-base font-medium">{app.candidateName}</CardTitle>
-                                        <div className={`text-sm font-bold ${app.alignmentScore >= 80 ? 'text-green-500' : app.alignmentScore >= 60 ? 'text-yellow-500' : 'text-red-500'}`}>
-                                            {app.alignmentScore}%
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="text-sm text-muted-foreground mb-2">{app.email}</div>
-                                        <div className="flex flex-wrap gap-1">
-                                            {app.tags.slice(0, 3).map(tag => (
-                                                <span key={tag} className="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold transition-colors border-transparent bg-secondary text-secondary-foreground">
-                                                    {tag}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
-                        </div>
+                        {/* Search Results - List Format */}
+                        {isSearching ? (
+                            <div className="flex justify-center py-12">
+                                <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+                            </div>
+                        ) : searchResults.length > 0 ? (
+                            <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                                <ResultsHeader
+                                    totalCount={matchCount}
+                                    currentPage={currentPage}
+                                    pageSize={pageSize}
+                                    isAllSelected={isAllSelected}
+                                    onSelectAll={setIsAllSelected}
+                                    onPageChange={handlePageChange}
+                                />
+                                <div className="p-6">
+                                    {searchResults.map((candidate) => {
+                                        // Extract data from parsedResume if available
+                                        const resume = candidate.parsedResume;
+                                        const experience = resume?.experience?.[0];
+                                        const education = resume?.education?.[0];
+                                        const contact = resume?.contact;
+
+                                        // Map CandidateProfile to CandidateCard props
+                                        const candidateData = {
+                                            id: candidate.id || candidate._id || '',
+                                            name: candidate.name || candidate.fullName || 'Unknown',
+                                            email: candidate.email,
+                                            phone: candidate.phone,
+                                            // Prefer parsed resume data, fallback to top-level fields
+                                            role: experience?.title || candidate.currentRole?.title || candidate.currentRole?.position,
+                                            company: experience?.company || candidate.currentRole?.company || candidate.currentRole?.companyName,
+                                            location: experience?.location || candidate.currentRole?.location || candidate.currentRole?.city,
+                                            education: education ? `${education.degree} ${education.field ? `, ${education.field}` : ''} at ${education.institution}` :
+                                                (candidate.education ? `${candidate.education.degree || ''} ${candidate.education.field || ''} at ${candidate.education.university || ''}` : undefined),
+                                            bio: candidate.resumeSummary || candidate.bio || candidate.summary || candidate.description,
+                                            skills: candidate.tags || candidate.skills || [],
+                                            matchScore: undefined,
+                                            socialLinks: {
+                                                linkedin: contact?.linkedin || candidate.linkedin,
+                                                github: contact?.github || candidate.github,
+                                                portfolio: contact?.portfolio || candidate.portfolio || candidate.website
+                                            }
+                                        };
+
+                                        return (
+                                            <CandidateCard
+                                                key={candidateData.id}
+                                                candidate={candidateData}
+                                                query={searchQuery}
+                                                onShortlist={(id: string) => {
+                                                    console.log('Shortlist candidate:', id);
+                                                    // TODO: Implement shortlist functionality
+                                                }}
+                                                onView={() => {
+                                                    setSelectedCandidateForDrawer(candidate);
+                                                }}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ) : hasSearched && !isSearching ? (
+                            <div className="text-center py-12 text-gray-500">
+                                <p>No candidates found. Try adjusting your search query.</p>
+                            </div>
+                        ) : null}
                     </>
                 )}
 
@@ -138,9 +271,24 @@ const RecruiterDashboard = () => {
                 >
                     {selectedApp && (
                         <CandidateCard
-                            application={selectedApp}
-                            onClose={() => setSelectedApp(null)}
-                            onUpdate={fetchApplications}
+                            candidate={{
+                                id: selectedApp.id || selectedApp.applicationId || '',
+                                name: selectedApp.candidateName,
+                                email: selectedApp.email,
+                                phone: selectedApp.phone,
+                                company: selectedApp.currentCompany,
+                                bio: selectedApp.resumePreview,
+                                skills: selectedApp.tags,
+                                matchScore: selectedApp.scores?.unifiedScore || selectedApp.alignmentScore,
+                                resumeScore: selectedApp.scores?.resumeScore,
+                                status: typeof selectedApp.status === 'string' ? selectedApp.status : 'Unknown',
+                            }}
+                            onView={(id) => {
+                                console.log('View candidate from modal:', id);
+                            }}
+                            onShortlist={(id) => {
+                                console.log('Shortlist candidate from modal:', id);
+                            }}
                         />
                     )}
                 </Modal>
@@ -150,6 +298,12 @@ const RecruiterDashboard = () => {
                     onClose={() => setIsFilterDrawerOpen(false)}
                     filters={filters}
                     onSave={handleUpdateFilters}
+                />
+
+                <CandidateProfileDrawer
+                    isOpen={!!selectedCandidateForDrawer}
+                    onClose={() => setSelectedCandidateForDrawer(null)}
+                    candidate={selectedCandidateForDrawer}
                 />
             </div>
         </div>

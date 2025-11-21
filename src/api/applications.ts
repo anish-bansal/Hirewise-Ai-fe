@@ -1,4 +1,5 @@
 import { request } from './apiClient';
+import { type CandidateProfile } from './search';
 
 export interface Application {
     id: string;
@@ -8,18 +9,13 @@ export interface Application {
     email: string;
     phone?: string;
     alignmentScore: number;
-    status: 'new' | 'level1_approved' | 'invited' | 'rejected' | { consentGiven?: boolean; level1Approved?: boolean; [key: string]: any };
+    status: 'new' | 'level1_approved' | 'invited' | 'rejected' | { consentGiven?: boolean; level1Approved?: boolean;[key: string]: any };
     tags: string[];
     resumePreview?: string;
     screeningId?: string;
     currentCompany?: string;
     // API response structure
-    candidate?: {
-        name: string;
-        email: string;
-        phone?: string;
-        tags: string[];
-    };
+    candidate?: CandidateProfile;
     scores?: {
         resumeScore?: number;
         githubPortfolioScore?: number | null;
@@ -28,6 +24,8 @@ export interface Application {
         compensationAnalysis?: any;
     };
     matchInfo?: any;
+    // Additional fields for UI
+    parsedResume?: CandidateProfile['parsedResume'];
 }
 
 // Helper function to format status for display
@@ -112,7 +110,7 @@ export const applicationsApi = {
 
     getByJobId: async (jobId: string, params?: GetApplicationsByJobParams): Promise<Application[]> => {
         const queryParams = new URLSearchParams();
-        
+
         if (params?.status) {
             queryParams.append('status', params.status);
         }
@@ -134,9 +132,9 @@ export const applicationsApi = {
 
         const queryString = queryParams.toString();
         const endpoint = `/api/applications/job/${jobId}${queryString ? `?${queryString}` : ''}`;
-        
+
         const response = await request<any>(endpoint);
-        
+
         // Handle different response structures
         let applicationsRaw: any[] = [];
         if (Array.isArray(response)) {
@@ -150,21 +148,21 @@ export const applicationsApi = {
             console.warn('Unexpected API response structure:', response);
             return [];
         }
-        
+
         // Map API response to Application interface
         return applicationsRaw.map((app: any): Application => {
             // Extract candidate info
             const candidate = app.candidate || {};
             const scores = app.scores || {};
-            
+
             // Extract current company from matchInfo or tags
             let currentCompany = '';
             if (app.matchInfo && app.matchInfo.currentCompany) {
                 currentCompany = app.matchInfo.currentCompany;
             } else if (Array.isArray(candidate.tags)) {
                 // Try to find company-related tags
-                const companyTag = candidate.tags.find((tag: string) => 
-                    tag.toLowerCase().includes('company') || 
+                const companyTag = candidate.tags.find((tag: string) =>
+                    tag.toLowerCase().includes('company') ||
                     tag.toLowerCase().includes('paytm') ||
                     tag.toLowerCase().includes('slack')
                 );
@@ -172,7 +170,7 @@ export const applicationsApi = {
                     currentCompany = companyTag;
                 }
             }
-            
+
             return {
                 id: app.applicationId || app.id || '',
                 applicationId: app.applicationId,
@@ -189,6 +187,7 @@ export const applicationsApi = {
                 candidate: candidate,
                 scores: scores,
                 matchInfo: app.matchInfo,
+                parsedResume: app.parsedResume || candidate.parsedResume,
             };
         });
     },

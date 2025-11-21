@@ -8,11 +8,11 @@ interface SearchBoxProps {
 }
 
 const SUGGESTIONS = [
-    "Software Engineers in SF working at Series B companies, skilled in Python and Node.js",
-    "Marketing Manager in Europe, German-speaking, working at a large enterprise",
-    "Senior Scientist in Australia, 8+ years experience",
-    "Consultant in London with 2+ years experience at top consulting firms",
-    "Sales Manager in Dallas with experience in ERP"
+    "Software Engineers in Bangalore working at Fintech startups, skilled in Python and Node.js",
+    "Product Managers in Mumbai with 5+ years experience in B2C",
+    "Data Scientists in Gurgaon skilled in Python and Machine Learning",
+    "HR Managers in Delhi with experience in tech recruitment",
+    "Full Stack Developers in Hyderabad working at product companies"
 ];
 
 import { analysisApi, type TagStatus } from '../../api/analysis';

@@ -31,67 +31,31 @@ export async function request<T>(endpoint: string, options: RequestInit = {}): P
         delete (headers as any)['Content-Type'];
     }
 
-    // Determine timeout based on request type
-    const timeout = isFormData ? DEFAULT_TIMEOUT : DEFAULT_TIMEOUT_NON_UPLOAD;
+    console.log('API Request:', { url, method: options.method || 'GET', body: options.body });
 
-    // Create AbortController for timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    const response = await fetch(url, { ...options, headers });
+
+    console.log('API Response status:', response.status, response.statusText);
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error Response:', errorText);
+        let errorData;
+        try {
+            errorData = JSON.parse(errorText);
+        } catch {
+            errorData = { message: errorText || 'An error occurred' };
+        }
+        throw new Error(errorData.message || response.statusText);
+    }
+
+    const responseText = await response.text();
+    console.log('API Response body:', responseText);
 
     try {
-        const response = await fetch(url, { 
-            ...options, 
-            headers,
-            signal: controller.signal 
-        });
-
-        clearTimeout(timeoutId);
-
-        // Handle 499 status code (client closed connection / timeout)
-        if (response.status === 499) {
-            throw new TimeoutError('Request timed out. The server took too long to respond. Please try again.');
-        }
-
-        if (!response.ok) {
-            // Try to parse error message from response
-            let errorMessage = response.statusText;
-            try {
-                const error = await response.json();
-                errorMessage = error.message || error.error || response.statusText;
-            } catch {
-                // If JSON parsing fails, use status text
-                errorMessage = response.statusText;
-            }
-
-            // Provide user-friendly messages for common status codes
-            if (response.status === 408 || response.status === 504) {
-                throw new TimeoutError('Request timed out. Please try again.');
-            } else if (response.status >= 500) {
-                throw new Error(`Server error (${response.status}): ${errorMessage}. Please try again later.`);
-            } else {
-                throw new Error(errorMessage || `Request failed with status ${response.status}`);
-            }
-        }
-
-        return response.json();
-    } catch (error) {
-        clearTimeout(timeoutId);
-
-        // Handle AbortError (timeout)
-        if (error instanceof Error) {
-            if (error.name === 'AbortError') {
-                throw new TimeoutError('Request timed out. The operation took too long. Please try again.');
-            }
-            // Re-throw our custom errors
-            if (error instanceof TimeoutError || error instanceof NetworkError) {
-                throw error;
-            }
-            // Handle network errors
-            if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-                throw new NetworkError('Network error. Please check your internet connection and try again.');
-            }
-        }
-
-        throw error;
+        return JSON.parse(responseText);
+    } catch (e) {
+        console.error('Failed to parse JSON response:', e);
+        throw new Error('Invalid JSON response from server');
     }
 }
