@@ -83,6 +83,13 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({ candidate, onShort
                                 onClick={(e) => e.stopPropagation()}
                             ></div>
 
+                            {/* Avatar */}
+                            {candidate.name && (
+                                <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 text-base font-bold flex-shrink-0">
+                                    {candidate.name.charAt(0).toUpperCase()}
+                                </div>
+                            )}
+
                             <h3 className="text-lg font-bold text-gray-900">{candidate.name}</h3>
 
                             <div className="flex items-center gap-1.5 ml-2" onClick={(e) => e.stopPropagation()}>

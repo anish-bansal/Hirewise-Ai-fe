@@ -16,10 +16,10 @@ const Layout = () => {
         <div className="min-h-screen bg-background font-sans antialiased">
             <nav className="border-b bg-card">
                 <div className="container mx-auto flex h-16 items-center px-4">
-                    <div className="mr-8 flex items-center space-x-2">
+                    <Link to="/" className="mr-8 flex items-center space-x-2 hover:opacity-80 transition-opacity cursor-pointer">
                         <Briefcase className="h-6 w-6 text-primary" />
-                        <span className="text-xl font-bold">HireWise</span>
-                    </div>
+                        <span className="text-xl font-bold">HireWiseAI</span>
+                    </Link>
                     <div className="flex items-center space-x-4">
                         {navItems.map((item) => {
                             const Icon = item.icon;

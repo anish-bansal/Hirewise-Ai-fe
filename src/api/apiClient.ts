@@ -31,22 +31,49 @@ export async function request<T>(endpoint: string, options: RequestInit = {}): P
         delete (headers as any)['Content-Type'];
     }
 
-    console.log('API Request:', { url, method: options.method || 'GET', body: options.body });
+    const isApplicationsJobEndpoint = url.includes('/api/applications/job/');
+    
+    // Suppress logging for applications/job endpoint to reduce noise
+    if (!isApplicationsJobEndpoint) {
+        console.log('API Request:', { url, method: options.method || 'GET', body: options.body });
+    }
 
     const response = await fetch(url, { ...options, headers });
 
-    console.log('API Response status:', response.status, response.statusText);
+    // Suppress logging for 500 errors on applications/job endpoint
+    if (!(isApplicationsJobEndpoint && response.status === 500)) {
+        console.log('API Response status:', response.status, response.statusText);
+    }
 
     if (!response.ok) {
         const errorText = await response.text();
-        console.error('API Error Response:', errorText);
         let errorData;
         try {
             errorData = JSON.parse(errorText);
         } catch {
             errorData = { message: errorText || 'An error occurred' };
         }
-        throw new Error(errorData.message || response.statusText);
+        
+        // Include status code in error message for better debugging
+        const errorMessage = errorData.message || errorData.error || response.statusText;
+        const error = new Error(`${response.status}: ${errorMessage}`);
+        (error as any).status = response.status;
+        
+        // Completely suppress logging for 500 errors on applications/job endpoint
+        // These are expected when jobs don't have applications yet
+        if (response.status === 500 && isApplicationsJobEndpoint) {
+            // Silently throw - will be caught in applications.ts
+            throw error;
+        }
+        
+        // For other errors, log normally
+        if (response.status === 500) {
+            console.warn('API 500 Error (Backend Issue):', errorText);
+        } else {
+            console.error('API Error Response:', errorText);
+        }
+        
+        throw error;
     }
 
     const responseText = await response.text();

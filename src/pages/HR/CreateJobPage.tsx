@@ -15,7 +15,7 @@ const JobFormSchema = z.object({
     company_name: z.string().min(2, "Company name is required"),
     role: z.string().min(2, "Role is required"),
     seniority: z.string().min(2, "Seniority is required"),
-    raw_jd: z.string().min(10, "Job description is required"),
+    raw_jd: z.string().min(10, "Job description must be at least 10 characters").optional(),
     budget_info: z.string().optional(),
     must_have_skills: z.string(),
     nice_to_have: z.string(),
@@ -53,6 +53,7 @@ const CreateJobPage = () => {
         try {
             const job = await jobsApi.create({
                 ...data,
+                raw_jd: data.raw_jd || '',
                 must_have_skills: data.must_have_skills.split(',').map(s => s.trim()).filter(Boolean),
                 nice_to_have: data.nice_to_have.split(',').map(s => s.trim()).filter(Boolean),
                 budget_info: data.budget_info || '',
@@ -294,13 +295,13 @@ const CreateJobPage = () => {
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Raw Job Description</label>
+                            <label className="text-sm font-medium">Job Description</label>
                             <textarea
                                 {...form.register('raw_jd')}
                                 className={`flex min-h-[150px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
                                     highlightedFields.has('raw_jd') ? 'animate-pulse border-green-400 bg-green-50/50 ring-2 ring-green-300' : ''
                                 }`}
-                                placeholder="Paste the raw JD here..."
+                                placeholder="Paste the job description here (optional)..."
                             />
                             {form.formState.errors.raw_jd && <p className="text-red-500 text-xs">{form.formState.errors.raw_jd.message}</p>}
                         </div>

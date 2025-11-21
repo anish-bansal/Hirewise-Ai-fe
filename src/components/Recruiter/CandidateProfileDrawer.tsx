@@ -5,26 +5,38 @@ import { motion } from 'framer-motion';
 import {
     Linkedin, Github, Mail, Phone, ExternalLink, MapPin,
     Building2, GraduationCap, Download, Share2,
-    Briefcase, Code2, Award, BookOpen, DollarSign, Zap, FileText, Check, X
+    Briefcase, Code2, Award, BookOpen, DollarSign, Zap, FileText, Check, X, Loader2
 } from 'lucide-react';
-
+import { applicationsApi } from '../../api/applications';
 import { EmailSequenceEditor } from './EmailSequenceEditor';
 
 interface CandidateProfileDrawerProps {
     isOpen: boolean;
     onClose: () => void;
     candidate: any; // Using any for flexibility with the complex JSON structure, but should be typed ideally
+    fromRecruiterPage?: boolean; // Flag to indicate if coming from recruiter page
 }
 
 export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
     isOpen,
     onClose,
-    candidate
+    candidate,
+    fromRecruiterPage = false
 }) => {
     const [activeTab, setActiveTab] = useState<'overview' | 'experience' | 'education' | 'projects' | 'skills'>('overview');
+    const [isDownloadingResume, setIsDownloadingResume] = useState(false);
     const [isEmailEditorOpen, setIsEmailEditorOpen] = useState(false);
+    const [isApprovingForSequence, setIsApprovingForSequence] = useState(false);
 
     if (!candidate) return null;
+
+    // Extract candidate name from various possible locations
+    const candidateName = candidate.name || candidate.candidateName || candidate.candidate?.name || 'Candidate';
+    
+    // Extract userId for resume download
+    const userId = candidate.userId || candidate.id || candidate._id || candidate.candidate?.userId || candidate.candidate?.id || '';
+    // Extract applicationId for approve-level1
+    const applicationId = candidate.id || candidate.applicationId || candidate._id || '';
 
     const parsedResume = candidate.parsedResume || candidate.candidate?.parsedResume || {};
     const contact = parsedResume.contact || {};
@@ -99,6 +111,69 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
         { id: 'skills', label: 'Skills', icon: Award },
     ];
 
+    const handleDownloadResume = async () => {
+        if (!userId) {
+            console.error('No userId found for resume download', candidate);
+            alert('Unable to download resume: User ID not found');
+            return;
+        }
+
+        setIsDownloadingResume(true);
+        try {
+            const blob = await applicationsApi.downloadResume(userId);
+            
+            // Create a download link
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            
+            // Determine filename
+            const candidateName = candidate.name || candidate.candidateName || 'Candidate';
+            const filename = `${candidateName.replace(/\s+/g, '_')}_Resume.pdf`;
+            link.download = filename;
+            
+            // Trigger download
+            document.body.appendChild(link);
+            link.click();
+            
+            // Cleanup
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Failed to download resume:', error);
+            alert(error instanceof Error ? error.message : 'Failed to download resume. Please try again.');
+        } finally {
+            setIsDownloadingResume(false);
+        }
+    };
+
+    const handleOpenEmailSequence = async () => {
+        // Only call approve-level1 API if NOT coming from recruiter page
+        if (!fromRecruiterPage) {
+            if (!applicationId) {
+                alert('Unable to start email sequence: Application ID not found');
+                return;
+            }
+
+            setIsApprovingForSequence(true);
+            try {
+                // Call approve-level1 API first
+                await applicationsApi.approveLevel1(applicationId);
+                
+                // Then open the email editor
+                setIsEmailEditorOpen(true);
+            } catch (error) {
+                console.error('Failed to approve application:', error);
+                alert(error instanceof Error ? error.message : 'Failed to approve application. Please try again.');
+            } finally {
+                setIsApprovingForSequence(false);
+            }
+        } else {
+            // From recruiter page - just open the email editor without calling approve API
+            setIsEmailEditorOpen(true);
+        }
+    };
+
     return (
         <>
             <Drawer isOpen={isOpen} onClose={onClose} title="Candidate Profile" width="max-w-3xl">
@@ -142,16 +217,44 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
                                     variant="outline"
                                     size="sm"
                                     className="gap-2 rounded-full text-purple-600 border-purple-200 hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300 transition-colors"
-                                    onClick={() => setIsEmailEditorOpen(true)}
+                                    onClick={handleOpenEmailSequence}
+                                    disabled={isApprovingForSequence || !applicationId}
                                 >
-                                    <Mail className="h-4 w-4" />
-                                    Sequence
+                                    {isApprovingForSequence ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            Approving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Mail className="h-4 w-4" />
+                                            Sequence
+                                        </>
+                                    )}
                                 </Button>
 
                                 <div className="h-6 w-px bg-gray-200 mx-1" />
 
                                 <Button variant="ghost" size="icon" className="rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100">
                                     <Share2 className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                    size="sm" 
+                                    className="gap-2"
+                                    onClick={handleDownloadResume}
+                                    disabled={isDownloadingResume || !userId}
+                                >
+                                    {isDownloadingResume ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            Downloading...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Download className="h-4 w-4" />
+                                            Resume
+                                        </>
+                                    )}
                                 </Button>
                                 <Button variant="ghost" size="icon" className="rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100">
                                     <Download className="h-4 w-4" />
@@ -492,8 +595,10 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
             <EmailSequenceEditor
                 isOpen={isEmailEditorOpen}
                 onClose={() => setIsEmailEditorOpen(false)}
-                candidateId={candidate.id || candidate._id || 'CANDIDATE_ID'}
-                screeningId={candidate.screeningId || 'SCREENING_ID'}
+                candidateId={userId}
+                screeningId={candidate.screeningId || candidate.screening?.id || candidate.applicationId || candidate.id || ''}
+                initialSubject={`Congratulations ${candidateName}! You've been approved for the next round`}
+                initialContent={`Hi ${candidateName},\n\nCongratulations! We're excited to inform you that you've been approved for the next round of our hiring process.\n\nWe were impressed with your background and experience, and we'd like to move forward with scheduling the next steps.\n\nPlease let us know your availability, and we'll coordinate the next interview.\n\nLooking forward to speaking with you soon!\n\nBest regards,\nHireWiseAI Team`}
             />
         </>
     );

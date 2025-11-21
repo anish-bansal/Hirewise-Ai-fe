@@ -99,6 +99,53 @@ export interface SearchResponse {
     [key: string]: any;
 }
 
+export interface PastSearch {
+    id?: string;
+    searchId: string;
+    searchText?: string;
+    query?: string; // For backward compatibility
+    createdAt?: string;
+    updatedAt?: string;
+    shortlistedCount?: number;
+    rejectedCount?: number;
+    totalResults?: number;
+    totalMatches?: number; // For backward compatibility
+    [key: string]: any;
+}
+
+export interface SearchResultSnapshot {
+    userId: string;
+    matchScore?: number;
+    skillsMatched?: string[];
+    recommendedAction?: string;
+    _id?: string;
+}
+
+export interface SearchDetails {
+    id?: string;
+    searchId: string;
+    searchText?: string;
+    query?: string; // For backward compatibility
+    searchCriteria?: {
+        tags?: string[];
+        resumeKeywords?: string[];
+        isHired?: boolean;
+    };
+    explanation?: string;
+    createdAt?: string;
+    updatedAt?: string;
+    users?: CandidateProfile[];
+    candidates?: CandidateProfile[];
+    resultsSnapshot?: SearchResultSnapshot[];
+    shortlistedUsers?: string[];
+    rejectedUsers?: string[];
+    shortlistedCount?: number;
+    rejectedCount?: number;
+    totalResults?: number;
+    totalMatches?: number; // For backward compatibility
+    [key: string]: any;
+}
+
 export const searchApi = {
     search: async (query: string, page: number = 1, pageSize: number = 15): Promise<SearchResponse | CandidateProfile[]> => {
         try {
@@ -122,6 +169,77 @@ export const searchApi = {
 
             // Re-throw with more context
             throw new Error(`Search API failed: ${error?.message || 'Unknown error'}`);
+        }
+    },
+
+    getPastSearches: async (): Promise<PastSearch[]> => {
+        try {
+            const response = await request<PastSearch[] | { searches?: PastSearch[]; data?: PastSearch[] }>('/api/users/searches', {
+                method: 'GET'
+            });
+
+            // Handle different response structures
+            if (Array.isArray(response)) {
+                return response;
+            } else if (response && Array.isArray((response as any).searches)) {
+                return (response as any).searches;
+            } else if (response && Array.isArray((response as any).data)) {
+                return (response as any).data;
+            }
+            return [];
+        } catch (error: any) {
+            console.error('Get past searches API error:', error);
+            throw new Error(`Failed to fetch past searches: ${error?.message || 'Unknown error'}`);
+        }
+    },
+
+    getSearchDetails: async (searchId: string): Promise<SearchDetails> => {
+        try {
+            const response = await request<SearchDetails>(`/api/users/search/${searchId}`, {
+                method: 'GET'
+            });
+            return response;
+        } catch (error: any) {
+            console.error('Get search details API error:', error);
+            throw new Error(`Failed to fetch search details: ${error?.message || 'Unknown error'}`);
+        }
+    },
+
+    getUserProfile: async (userId: string): Promise<CandidateProfile> => {
+        try {
+            const response = await request<CandidateProfile>(`/api/users/${userId}`, {
+                method: 'GET'
+            });
+            return response;
+        } catch (error: any) {
+            console.error('Get user profile API error:', error);
+            throw new Error(`Failed to fetch user profile: ${error?.message || 'Unknown error'}`);
+        }
+    },
+
+    shortlistUser: async (searchId: string, userId: string): Promise<{ success: boolean }> => {
+        try {
+            const response = await request<{ success: boolean }>(`/api/users/search/${searchId}/shortlist`, {
+                method: 'POST',
+                body: JSON.stringify({ userId })
+            });
+            return response;
+        } catch (error: any) {
+            console.error('Shortlist user API error:', error);
+            throw new Error(`Failed to shortlist user: ${error?.message || 'Unknown error'}`);
+        }
+    },
+
+    rejectUser: async (searchId: string, userId: string): Promise<{ success: boolean }> => {
+        try {
+            const response = await request<{ success: boolean }>(`/api/users/search/${searchId}/reject`, {
+                method: 'POST',
+                body: JSON.stringify({ userId })
+            });
+            return response;
+        } catch (error: any) {
+            console.error('Reject user API error:', error);
+            throw new Error(`Failed to reject user: ${error?.message || 'Unknown error'}`);
         }
     }
 };

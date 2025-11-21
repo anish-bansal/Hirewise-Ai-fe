@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { jobsApi, type Job } from '../../api/jobs';
 import { applicationsApi, type Application } from '../../api/applications';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { Loader2, ExternalLink, Copy } from 'lucide-react';
+import { Loader2, ExternalLink, Copy, Upload, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { Input } from '../../components/ui/Input';
 import { CandidateCard } from '../../components/Recruiter/CandidateCard';
 import { CandidateProfileDrawer } from '../../components/Recruiter/CandidateProfileDrawer';
@@ -15,6 +15,9 @@ const JobDetailPage = () => {
     const [applications, setApplications] = useState<Application[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingApplications, setIsLoadingApplications] = useState(false);
+    const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+    const [isImportingResumes, setIsImportingResumes] = useState(false);
+    const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
     useEffect(() => {
         const fetchJob = async () => {
@@ -31,39 +34,91 @@ const JobDetailPage = () => {
         fetchJob();
     }, [jobId]);
 
-    useEffect(() => {
-        const fetchApplications = async () => {
-            if (!jobId) return;
-            setIsLoadingApplications(true);
-            try {
-                const data = await applicationsApi.getByJobId(jobId, {
-                    sortBy: 'score',
-                    sortOrder: 'desc'
-                });
-                // Ensure data is always an array
-                setApplications(Array.isArray(data) ? data : []);
-            } catch (error) {
+    const fetchApplications = useCallback(async () => {
+        if (!jobId || !job) return; // Only fetch if jobId exists and job is loaded
+        setIsLoadingApplications(true);
+        try {
+            const data = await applicationsApi.getByJobId(jobId, {
+                sortBy: 'score',
+                sortOrder: 'desc'
+            });
+            // Ensure data is always an array
+            setApplications(Array.isArray(data) ? data : []);
+        } catch (error: unknown) {
+            // This catch should rarely be hit now since 500 errors are handled in applications.ts
+            // But handle any other unexpected errors gracefully
+            const errorObj = error as any;
+            const errorMessage = errorObj?.message || String(error);
+            if (errorObj?.status !== 500 && !errorMessage.includes('500')) {
                 console.error('Failed to fetch applications:', error);
-                setApplications([]); // Set empty array on error
-            } finally {
-                setIsLoadingApplications(false);
             }
-        };
-        if (jobId) {
+            // Always set empty array on error to prevent UI crashes
+            setApplications([]);
+        } finally {
+            setIsLoadingApplications(false);
+        }
+    }, [jobId, job]);
+
+    useEffect(() => {
+        // Only fetch applications after job is successfully loaded
+        if (jobId && job) {
             fetchApplications();
         }
-    }, [jobId]);
+    }, [jobId, job, fetchApplications]);
 
     if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     if (!job) return <div className="text-center py-8">Job not found</div>;
 
     const publicLink = `${window.location.origin}/agent/${job.id}`;
 
-    const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
-
     const selectedCandidate = applications.find(app =>
         (app.id || app.applicationId) === selectedCandidateId
     );
+
+    const handleImportResumes = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const files = event.target.files;
+        if (!files || files.length === 0 || !jobId) return;
+
+        setIsImportingResumes(true);
+        setImportMessage(null);
+
+        try {
+            const fileArray = Array.from(files);
+            
+            // Validate all files are PDFs
+            const invalidFiles = fileArray.filter(file => file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf'));
+            if (invalidFiles.length > 0) {
+                throw new Error(`Please upload only PDF files. Found ${invalidFiles.length} invalid file(s).`);
+            }
+
+            const result = await applicationsApi.batchValidateResumes(jobId, fileArray);
+            
+            setImportMessage({
+                type: 'success',
+                text: `Successfully imported ${result.processed || fileArray.length} resume(s). Applications are being processed.`
+            });
+
+            // Refresh applications list after a short delay to allow backend processing
+            setTimeout(() => {
+                fetchApplications();
+            }, 2000);
+
+            // Clear message after 5 seconds
+            setTimeout(() => {
+                setImportMessage(null);
+            }, 5000);
+        } catch (error) {
+            console.error('Failed to import resumes:', error);
+            setImportMessage({
+                type: 'error',
+                text: error instanceof Error ? error.message : 'Failed to import resumes. Please try again.'
+            });
+        } finally {
+            setIsImportingResumes(false);
+            // Reset file input
+            event.target.value = '';
+        }
+    };
 
     // Map selected candidate to the format expected by CandidateProfileDrawer if needed
     // Ideally CandidateProfileDrawer should handle the raw application object, which we implemented.
@@ -76,6 +131,32 @@ const JobDetailPage = () => {
                     <p className="text-muted-foreground">{job.company_name} • {job.seniority}</p>
                 </div>
                 <div className="flex space-x-2">
+                    <input
+                        type="file"
+                        id="resume-upload"
+                        accept="application/pdf,.pdf"
+                        multiple
+                        onChange={handleImportResumes}
+                        className="hidden"
+                        disabled={isImportingResumes}
+                    />
+                    <Button 
+                        variant="outline" 
+                        onClick={() => document.getElementById('resume-upload')?.click()}
+                        disabled={isImportingResumes}
+                    >
+                        {isImportingResumes ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Importing...
+                            </>
+                        ) : (
+                            <>
+                                <Upload className="mr-2 h-4 w-4" />
+                                Import Resumes
+                            </>
+                        )}
+                    </Button>
                     <Button variant="outline" asChild>
                         <Link to={`/agent/${job.id}`} target="_blank">
                             <ExternalLink className="mr-2 h-4 w-4" />
@@ -85,6 +166,26 @@ const JobDetailPage = () => {
                     <Button>Publish Job</Button>
                 </div>
             </div>
+
+            {/* Import Message */}
+            {importMessage && (
+                <div className={`flex items-start gap-2 p-4 rounded-md border ${
+                    importMessage.type === 'success' 
+                        ? 'bg-green-50 border-green-200' 
+                        : 'bg-red-50 border-red-200'
+                }`}>
+                    {importMessage.type === 'success' ? (
+                        <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    ) : (
+                        <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    )}
+                    <p className={`text-sm ${
+                        importMessage.type === 'success' ? 'text-green-900' : 'text-red-900'
+                    }`}>
+                        {importMessage.text}
+                    </p>
+                </div>
+            )}
 
             <div className="grid gap-6 md:grid-cols-3">
                 <div className="md:col-span-2 space-y-6">
@@ -102,12 +203,26 @@ const JobDetailPage = () => {
 
                     <Card>
                         <CardHeader>
-                            <CardTitle>Candidate Matches</CardTitle>
-                            <CardDescription>
-                                {isLoadingApplications
-                                    ? 'Loading applications...'
-                                    : `${applications.length} ${applications.length === 1 ? 'match' : 'matches'} found`}
-                            </CardDescription>
+                            <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                    <CardTitle>Applications</CardTitle>
+                                    <CardDescription>
+                                        {isLoadingApplications
+                                            ? 'Loading applications...'
+                                            : `${applications.length} ${applications.length === 1 ? 'match' : 'matches'} found`}
+                                    </CardDescription>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={fetchApplications}
+                                    disabled={isLoadingApplications || !jobId}
+                                    className="ml-4"
+                                    title="Refresh matches"
+                                >
+                                    <RefreshCw className={`h-4 w-4 ${isLoadingApplications ? 'animate-spin' : ''}`} />
+                                </Button>
+                            </div>
                         </CardHeader>
                         <CardContent>
                             {isLoadingApplications ? (
@@ -121,7 +236,7 @@ const JobDetailPage = () => {
                             ) : (
                                 <div className="space-y-4">
                                     {applications.map((application) => {
-                                        const resumeScore = application.scores?.resumeScore;
+                                        const resumeScore = application.scores?.resumeScore || application.alignmentScore;
                                         const unifiedScore = application.scores?.unifiedScore || application.alignmentScore;
 
                                         // Map Application to CandidateCard props

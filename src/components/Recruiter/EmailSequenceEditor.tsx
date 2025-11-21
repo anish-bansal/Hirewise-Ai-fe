@@ -15,20 +15,24 @@ interface EmailSequenceEditorProps {
     onClose: () => void;
     candidateId: string;
     screeningId: string;
+    initialSubject?: string;
+    initialContent?: string;
 }
 
 export const EmailSequenceEditor: React.FC<EmailSequenceEditorProps> = ({
     isOpen,
     onClose,
     candidateId,
-    screeningId
+    screeningId,
+    initialSubject,
+    initialContent
 }) => {
     const [steps, setSteps] = useState([
-        { id: 1, type: 'Email', label: 'Step 1', content: '' }
+        { id: 1, type: 'Email', label: 'Step 1', content: initialContent || '' }
     ]);
     const [activeStepId, setActiveStepId] = useState(1);
     const [isAddStepOpen, setIsAddStepOpen] = useState(false);
-    const [subject, setSubject] = useState("Let's stay in touch!");
+    const [subject, setSubject] = useState(initialSubject || "Congratulations! You've been approved for the next round");
 
     // Derived state for active step
     const activeStep = steps.find(s => s.id === activeStepId) || steps[0];

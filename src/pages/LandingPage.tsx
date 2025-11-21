@@ -10,7 +10,7 @@ const LandingPage = () => {
             <header className="px-6 py-12 md:py-24 lg:py-32 text-center space-y-8 bg-gradient-to-b from-background to-accent/20">
                 <div className="space-y-4 max-w-3xl mx-auto">
                     <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-600">
-                        HireWise
+                        HireWiseAI
                     </h1>
                     <p className="text-xl md:text-2xl text-muted-foreground">
                         The AI-powered recruiting platform that streamlines hiring for everyone.
@@ -100,7 +100,7 @@ const LandingPage = () => {
             {/* Features Section */}
             <section className="bg-muted/30 py-16">
                 <div className="container mx-auto px-6">
-                    <h2 className="text-3xl font-bold text-center mb-12">Why HireWise?</h2>
+                    <h2 className="text-3xl font-bold text-center mb-12">Why HireWiseAI?</h2>
                     <div className="grid gap-8 md:grid-cols-3 text-center">
                         <div className="space-y-4">
                             <div className="mx-auto w-12 h-12 bg-background rounded-full flex items-center justify-center shadow-sm">
@@ -129,7 +129,7 @@ const LandingPage = () => {
 
             {/* Footer */}
             <footer className="py-8 text-center text-muted-foreground text-sm">
-                <p>© 2024 HireWise. Built for the future of hiring.</p>
+                <p>© 2024 HireWiseAI. Built for the future of hiring.</p>
             </footer>
         </div>
     );

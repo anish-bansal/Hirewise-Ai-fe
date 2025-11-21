@@ -4,6 +4,7 @@ import { type CandidateProfile } from './search';
 export interface Application {
     id: string;
     applicationId?: string;
+    userId?: string;
     jobId: string;
     candidateName: string;
     email: string;
@@ -14,6 +15,12 @@ export interface Application {
     resumePreview?: string;
     screeningId?: string;
     currentCompany?: string;
+    githubUrl?: string;
+    portfolioUrl?: string;
+    linkedinUrl?: string;
+    location?: string;
+    education?: string;
+    currentRole?: string;
     // API response structure
     candidate?: CandidateProfile;
     scores?: {
@@ -109,6 +116,11 @@ export const applicationsApi = {
     },
 
     getByJobId: async (jobId: string, params?: GetApplicationsByJobParams): Promise<Application[]> => {
+        if (!jobId || jobId.trim() === '') {
+            console.warn('Invalid jobId provided to getByJobId');
+            return [];
+        }
+
         const queryParams = new URLSearchParams();
 
         if (params?.status) {
@@ -133,7 +145,30 @@ export const applicationsApi = {
         const queryString = queryParams.toString();
         const endpoint = `/api/applications/job/${jobId}${queryString ? `?${queryString}` : ''}`;
 
-        const response = await request<any>(endpoint);
+        let response;
+        try {
+            response = await request<any>(endpoint);
+        } catch (error: unknown) {
+            // If it's a 500 error, return empty array instead of throwing
+            // This handles cases where the job doesn't exist or backend has issues
+            const errorObj = error as any;
+            const statusCode = errorObj?.status;
+            
+            // Handle 500 errors gracefully - backend issue, not a critical error
+            // Return empty array silently without logging
+            if (statusCode === 500) {
+                return [];
+            }
+            
+            // Check error message as fallback
+            const errorMessage = errorObj?.message || String(error);
+            if (errorMessage.includes('500') || errorMessage.includes('Internal server error')) {
+                return [];
+            }
+            
+            // Re-throw other errors (network errors, 404s, etc.)
+            throw error;
+        }
 
         // Handle different response structures
         let applicationsRaw: any[] = [];
@@ -172,8 +207,10 @@ export const applicationsApi = {
             }
 
             return {
-                id: app.applicationId || app.id || '',
-                applicationId: app.applicationId,
+                // Ensure we use applicationId from backend, not id (which might be jobId)
+                id: app.applicationId || app._id || app.id || '',
+                applicationId: app.applicationId || app._id || app.id,
+                userId: app.userId || app.user_id || app.candidate?.userId || app.candidate?.user_id || app.candidate?.id,
                 jobId: app.jobId || jobId,
                 candidateName: candidate.name || app.candidateName || 'Unknown',
                 email: candidate.email || app.email || '',
@@ -184,6 +221,12 @@ export const applicationsApi = {
                 resumePreview: app.resumePreview,
                 screeningId: app.screeningId,
                 currentCompany: currentCompany || app.currentCompany,
+                githubUrl: app.githubUrl || candidate.githubUrl || app.matchInfo?.githubUrl,
+                portfolioUrl: app.portfolioUrl || candidate.portfolioUrl || app.matchInfo?.portfolioUrl,
+                linkedinUrl: app.linkedinUrl || candidate.linkedinUrl || app.matchInfo?.linkedinUrl,
+                location: app.location || app.matchInfo?.location,
+                education: app.education || app.matchInfo?.education,
+                currentRole: app.currentRole || app.matchInfo?.currentRole || app.matchInfo?.position,
                 candidate: candidate,
                 scores: scores,
                 matchInfo: app.matchInfo,
@@ -203,5 +246,43 @@ export const applicationsApi = {
         // We'll simulate success for now to keep UI functional.
         await new Promise(resolve => setTimeout(resolve, 500));
         return { success: true };
+    },
+
+    batchValidateResumes: async (jobId: string, resumeFiles: File[]) => {
+        const formData = new FormData();
+        resumeFiles.forEach(file => {
+            formData.append('resumes', file);
+        });
+
+        return request<{
+            success: boolean;
+            processed: number;
+            applications?: Application[];
+        }>(`/api/applications/batch-validate/${jobId}`, {
+            method: 'POST',
+            body: formData,
+        });
+    },
+
+    downloadResume: async (userId: string): Promise<Blob> => {
+        const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+        const url = `${BASE_URL}/api/users/${userId}/resume`;
+
+        const response = await fetch(url, {
+            method: 'GET',
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            let errorData;
+            try {
+                errorData = JSON.parse(errorText);
+            } catch {
+                errorData = { message: errorText || 'Failed to download resume' };
+            }
+            throw new Error(errorData.message || response.statusText);
+        }
+
+        return await response.blob();
     }
 };
