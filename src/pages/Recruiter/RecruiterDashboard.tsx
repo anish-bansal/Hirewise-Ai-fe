@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { applicationsApi, type Application } from '../../api/applications';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
+import React, { useState } from 'react';
+import { type Application } from '../../api/applications';
+import { Card, CardContent } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
 import { CandidateCard } from '../../components/Recruiter/CandidateCard';
-import { Loader2, History, Clock, Users, CheckCircle, XCircle, Edit2, Play, RefreshCw } from 'lucide-react';
+import { Loader2, History, Users, CheckCircle, XCircle, Play, RefreshCw } from 'lucide-react';
 import { SearchBox } from '../../components/Recruiter/SearchBox';
 import { ResultSummary } from '../../components/Recruiter/ResultSummary';
 import { FilterDrawer } from '../../components/Recruiter/FilterDrawer';
@@ -13,8 +13,8 @@ import { CandidateProfileDrawer } from '../../components/Recruiter/CandidateProf
 import { Button } from '../../components/ui/Button';
 
 const RecruiterDashboard = () => {
-    const [applications, setApplications] = useState<Application[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    // const [applications, setApplications] = useState<Application[]>([]);
+    // const [isLoading, setIsLoading] = useState(true);
     const [selectedApp, setSelectedApp] = useState<Application | null>(null);
 
     // Search State
@@ -34,21 +34,6 @@ const RecruiterDashboard = () => {
         skills: [] as string[]
     });
 
-    const fetchApplications = async () => {
-        setIsLoading(true);
-        try {
-            const data = await applicationsApi.list();
-            setApplications(data);
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchApplications();
-    }, []);
 
     const handleSearch = async (query: string, page: number = 1) => {
         setSearchQuery(query);
@@ -110,10 +95,10 @@ const RecruiterDashboard = () => {
                 });
             } else {
                 // Fallback: parse query to auto-populate filters
-        if (query.toLowerCase().includes('software engineer')) {
-            setFilters(prev => ({ ...prev, jobTitle: 'Software Engineer', skills: ['Python', 'Node.js'] }));
-        } else if (query.toLowerCase().includes('marketing')) {
-            setFilters(prev => ({ ...prev, jobTitle: 'Marketing Manager', location: 'Europe' }));
+                if (query.toLowerCase().includes('software engineer')) {
+                    setFilters(prev => ({ ...prev, jobTitle: 'Software Engineer', skills: ['Python', 'Node.js'] }));
+                } else if (query.toLowerCase().includes('marketing')) {
+                    setFilters(prev => ({ ...prev, jobTitle: 'Marketing Manager', location: 'Europe' }));
                 }
             }
         } catch (error: any) {
@@ -161,7 +146,7 @@ const RecruiterDashboard = () => {
     const [selectedCandidateForDrawer, setSelectedCandidateForDrawer] = useState<CandidateProfile | null>(null);
     const [currentSearchIdForDrawer, setCurrentSearchIdForDrawer] = useState<string | null>(null);
     const [isCandidateRejected, setIsCandidateRejected] = useState<boolean>(false);
-    
+
     // Past Searches State
     const [isPastSearchesOpen, setIsPastSearchesOpen] = useState(false);
     const [pastSearches, setPastSearches] = useState<PastSearch[]>([]);
@@ -207,7 +192,7 @@ const RecruiterDashboard = () => {
         try {
             // Fetch updated search details
             const details = await searchApi.getSearchDetails(searchId);
-            
+
             // Update the past searches list with updated counts
             setPastSearches(prev => prev.map(search => {
                 if ((search.searchId || search.id) === searchId) {
@@ -244,7 +229,7 @@ const RecruiterDashboard = () => {
             if (expandedSearch) {
                 // Re-fetch profiles based on current filter type
                 const filterType = expandedSearch.filterType;
-                
+
                 try {
                     if (filterType === 'shortlisted') {
                         // Extract userIds from shortlistedUsers array
@@ -258,7 +243,7 @@ const RecruiterDashboard = () => {
                                 }
                             });
                         }
-                        
+
                         // Fetch profiles only for shortlisted user IDs
                         const profilePromises = shortlistedUserIds.map(async (userId) => {
                             try {
@@ -277,13 +262,13 @@ const RecruiterDashboard = () => {
                                 return null;
                             }
                         });
-                        
+
                         const fetchedProfiles = await Promise.all(profilePromises);
                         const shortlistedProfiles = fetchedProfiles.filter((p): p is CandidateProfile => p !== null);
-                        
+
                         setExpandedPastSearches(prev => ({
                             ...prev,
-                            [searchId]: { 
+                            [searchId]: {
                                 ...prev[searchId],
                                 profiles: shortlistedProfiles,
                                 shortlistedUsers: shortlistedUserIds,
@@ -302,7 +287,7 @@ const RecruiterDashboard = () => {
                                 }
                             });
                         }
-                        
+
                         // Fetch profiles only for rejected user IDs
                         const profilePromises = rejectedUserIds.map(async (userId) => {
                             try {
@@ -321,13 +306,13 @@ const RecruiterDashboard = () => {
                                 return null;
                             }
                         });
-                        
+
                         const fetchedProfiles = await Promise.all(profilePromises);
                         const rejectedProfiles = fetchedProfiles.filter((p): p is CandidateProfile => p !== null);
-                        
+
                         setExpandedPastSearches(prev => ({
                             ...prev,
-                            [searchId]: { 
+                            [searchId]: {
                                 ...prev[searchId],
                                 profiles: rejectedProfiles,
                                 shortlistedUsers: [],
@@ -337,7 +322,7 @@ const RecruiterDashboard = () => {
                     } else {
                         // For 'all', refresh all profiles
                         let allCandidates: CandidateProfile[] = [];
-                        
+
                         if (details.resultsSnapshot && Array.isArray(details.resultsSnapshot) && details.resultsSnapshot.length > 0) {
                             const profilePromises = details.resultsSnapshot.map(async (snapshot: any) => {
                                 try {
@@ -355,17 +340,17 @@ const RecruiterDashboard = () => {
                                     return null;
                                 }
                             });
-                            
+
                             const fetchedProfiles = await Promise.all(profilePromises);
                             allCandidates = fetchedProfiles.filter((p): p is CandidateProfile => p !== null);
                         } else {
                             allCandidates = details.users || details.candidates || [];
                         }
-                        
+
                         // Extract userIds from shortlistedUsers and rejectedUsers arrays
                         const shortlistedUserIds: string[] = [];
                         const rejectedUserIds: string[] = [];
-                        
+
                         if (details.shortlistedUsers && Array.isArray(details.shortlistedUsers)) {
                             details.shortlistedUsers.forEach((user: any) => {
                                 if (typeof user === 'string') {
@@ -375,7 +360,7 @@ const RecruiterDashboard = () => {
                                 }
                             });
                         }
-                        
+
                         if (details.rejectedUsers && Array.isArray(details.rejectedUsers)) {
                             details.rejectedUsers.forEach((user: any) => {
                                 if (typeof user === 'string') {
@@ -385,10 +370,10 @@ const RecruiterDashboard = () => {
                                 }
                             });
                         }
-                        
+
                         setExpandedPastSearches(prev => ({
                             ...prev,
-                            [searchId]: { 
+                            [searchId]: {
                                 ...prev[searchId],
                                 profiles: allCandidates,
                                 shortlistedUsers: shortlistedUserIds,
@@ -415,7 +400,7 @@ const RecruiterDashboard = () => {
         try {
             const details = await searchApi.getSearchDetails(searchId);
             setSelectedSearchDetails(details);
-            
+
             // Update shortlisted and rejected users sets from the response
             if (details.shortlistedUsers && Array.isArray(details.shortlistedUsers)) {
                 setShortlistedUsers(new Set(details.shortlistedUsers));
@@ -423,10 +408,10 @@ const RecruiterDashboard = () => {
             if (details.rejectedUsers && Array.isArray(details.rejectedUsers)) {
                 setRejectedUsers(new Set(details.rejectedUsers));
             }
-            
+
             // Get candidates from resultsSnapshot or existing users/candidates arrays
             let allCandidates: CandidateProfile[] = [];
-            
+
             if (details.resultsSnapshot && Array.isArray(details.resultsSnapshot) && details.resultsSnapshot.length > 0) {
                 // Fetch user profiles for each userId in resultsSnapshot
                 const profilePromises = details.resultsSnapshot.map(async (snapshot) => {
@@ -453,27 +438,27 @@ const RecruiterDashboard = () => {
                         } as CandidateProfile & { matchScore?: number; skillsMatched?: string[]; recommendedAction?: string };
                     }
                 });
-                
+
                 allCandidates = await Promise.all(profilePromises);
             } else {
                 // Fallback to existing users/candidates arrays
                 allCandidates = details.users || details.candidates || [];
             }
-            
+
             // Filter based on selection
             let filteredCandidates = allCandidates;
             if (filterType === 'shortlisted') {
                 const shortlistedSet = details.shortlistedUsers ? new Set(details.shortlistedUsers) : shortlistedUsers;
-                filteredCandidates = allCandidates.filter((candidate: CandidateProfile) => 
+                filteredCandidates = allCandidates.filter((candidate: CandidateProfile) =>
                     shortlistedSet.has(candidate.id || candidate._id || '')
                 );
             } else if (filterType === 'rejected') {
                 const rejectedSet = details.rejectedUsers ? new Set(details.rejectedUsers) : rejectedUsers;
-                filteredCandidates = allCandidates.filter((candidate: CandidateProfile) => 
+                filteredCandidates = allCandidates.filter((candidate: CandidateProfile) =>
                     rejectedSet.has(candidate.id || candidate._id || '')
                 );
             }
-            
+
             setSearchResults(filteredCandidates);
             setMatchCount(details.totalResults || details.totalMatches || filteredCandidates.length);
             setSearchQuery(details.searchText || details.query || '');
@@ -489,7 +474,7 @@ const RecruiterDashboard = () => {
 
     const handleViewAll = async (searchId: string, event?: React.MouseEvent) => {
         event?.stopPropagation();
-        
+
         // If already expanded with all, collapse it
         if (expandedPastSearches[searchId]?.filterType === 'all') {
             setExpandedPastSearches(prev => {
@@ -508,10 +493,10 @@ const RecruiterDashboard = () => {
 
         try {
             const details = await searchApi.getSearchDetails(searchId);
-            
+
             // Get all candidates from resultsSnapshot
             let allCandidates: CandidateProfile[] = [];
-            
+
             if (details.resultsSnapshot && Array.isArray(details.resultsSnapshot) && details.resultsSnapshot.length > 0) {
                 // Fetch user profiles for each userId in resultsSnapshot
                 const profilePromises = details.resultsSnapshot.map(async (snapshot) => {
@@ -530,7 +515,7 @@ const RecruiterDashboard = () => {
                         return null;
                     }
                 });
-                
+
                 const fetchedProfiles = await Promise.all(profilePromises);
                 allCandidates = fetchedProfiles.filter((p): p is CandidateProfile => p !== null);
             } else {
@@ -557,7 +542,7 @@ const RecruiterDashboard = () => {
             // Extract userIds from shortlistedUsers and rejectedUsers arrays
             const shortlistedUserIds: string[] = [];
             const rejectedUserIds: string[] = [];
-            
+
             if (details.shortlistedUsers && Array.isArray(details.shortlistedUsers)) {
                 details.shortlistedUsers.forEach((user: any) => {
                     if (typeof user === 'string') {
@@ -567,7 +552,7 @@ const RecruiterDashboard = () => {
                     }
                 });
             }
-            
+
             if (details.rejectedUsers && Array.isArray(details.rejectedUsers)) {
                 details.rejectedUsers.forEach((user: any) => {
                     if (typeof user === 'string') {
@@ -580,9 +565,9 @@ const RecruiterDashboard = () => {
 
             setExpandedPastSearches(prev => ({
                 ...prev,
-                [searchId]: { 
-                    filterType: 'all', 
-                    profiles: allCandidates, 
+                [searchId]: {
+                    filterType: 'all',
+                    profiles: allCandidates,
                     isLoading: false,
                     shortlistedUsers: shortlistedUserIds,
                     rejectedUsers: rejectedUserIds
@@ -599,7 +584,7 @@ const RecruiterDashboard = () => {
 
     const handleViewShortlisted = async (searchId: string, event: React.MouseEvent) => {
         event.stopPropagation();
-        
+
         // If already expanded with shortlisted, collapse it
         if (expandedPastSearches[searchId]?.filterType === 'shortlisted') {
             setExpandedPastSearches(prev => {
@@ -619,7 +604,7 @@ const RecruiterDashboard = () => {
         try {
             // Call API without status parameter to get full search details
             const details = await searchApi.getSearchDetails(searchId);
-            
+
             // Extract userIds from shortlistedUsers array (could be objects with _id or just strings)
             const shortlistedUserIds: string[] = [];
             if (details.shortlistedUsers && Array.isArray(details.shortlistedUsers)) {
@@ -630,7 +615,7 @@ const RecruiterDashboard = () => {
                         shortlistedUserIds.push(user._id || user.id || user.userId);
                     }
                 });
-                
+
                 // Update shortlisted users set
                 setShortlistedUsers(prev => {
                     const newSet = new Set(prev);
@@ -658,15 +643,15 @@ const RecruiterDashboard = () => {
                     return null;
                 }
             });
-            
+
             const fetchedProfiles = await Promise.all(profilePromises);
             const shortlistedProfiles = fetchedProfiles.filter((p): p is CandidateProfile => p !== null);
 
             setExpandedPastSearches(prev => ({
                 ...prev,
-                [searchId]: { 
-                    filterType: 'shortlisted', 
-                    profiles: shortlistedProfiles, 
+                [searchId]: {
+                    filterType: 'shortlisted',
+                    profiles: shortlistedProfiles,
                     isLoading: false,
                     shortlistedUsers: shortlistedUserIds,
                     rejectedUsers: []
@@ -683,7 +668,7 @@ const RecruiterDashboard = () => {
 
     const handleViewRejected = async (searchId: string, event: React.MouseEvent) => {
         event.stopPropagation();
-        
+
         // If already expanded with rejected, collapse it
         if (expandedPastSearches[searchId]?.filterType === 'rejected') {
             setExpandedPastSearches(prev => {
@@ -703,7 +688,7 @@ const RecruiterDashboard = () => {
         try {
             // Call API without status parameter to get full search details
             const details = await searchApi.getSearchDetails(searchId);
-            
+
             // Extract userIds from rejectedUsers array (could be objects with _id or just strings)
             const rejectedUserIds: string[] = [];
             if (details.rejectedUsers && Array.isArray(details.rejectedUsers)) {
@@ -714,7 +699,7 @@ const RecruiterDashboard = () => {
                         rejectedUserIds.push(user._id || user.id || user.userId);
                     }
                 });
-                
+
                 // Update rejected users set
                 setRejectedUsers(prev => {
                     const newSet = new Set(prev);
@@ -742,15 +727,15 @@ const RecruiterDashboard = () => {
                     return null;
                 }
             });
-            
+
             const fetchedProfiles = await Promise.all(profilePromises);
             const rejectedProfiles = fetchedProfiles.filter((p): p is CandidateProfile => p !== null);
 
             setExpandedPastSearches(prev => ({
                 ...prev,
-                [searchId]: { 
-                    filterType: 'rejected', 
-                    profiles: rejectedProfiles, 
+                [searchId]: {
+                    filterType: 'rejected',
+                    profiles: rejectedProfiles,
                     isLoading: false,
                     shortlistedUsers: [],
                     rejectedUsers: rejectedUserIds
@@ -784,32 +769,13 @@ const RecruiterDashboard = () => {
         }
     };
 
-    const handleRejectUser = async (searchId: string, userId: string) => {
-        try {
-            await searchApi.rejectUser(searchId, userId);
-            setRejectedUsers(prev => new Set(prev).add(userId));
-            setShortlistedUsers(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(userId);
-                return newSet;
-            });
-            // Refresh search details if currently viewing this search
-            if (selectedSearchDetails?.searchId === searchId || selectedSearchDetails?.id === searchId) {
-                await handleSearchClick(searchId, searchFilter);
-            }
-        } catch (error) {
-            console.error('Failed to reject user:', error);
-            alert('Failed to reject user. Please try again.');
-        }
-    };
-
     const formatDate = (dateString?: string) => {
         if (!dateString) return 'Unknown date';
         try {
             const date = new Date(dateString);
-            return date.toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'short', 
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
                 day: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit'
@@ -840,10 +806,10 @@ const RecruiterDashboard = () => {
                         <div className="w-full max-w-3xl space-y-6">
                             <div className="flex items-center gap-4">
                                 <div className="flex-1">
-                            <SearchBox onSearch={handleSearch} />
+                                    <SearchBox onSearch={handleSearch} />
                                 </div>
-                                <Button 
-                                    variant="outline" 
+                                <Button
+                                    variant="outline"
                                     onClick={handleOpenPastSearches}
                                     className="gap-2"
                                 >
@@ -1003,7 +969,7 @@ const RecruiterDashboard = () => {
                                                                                 const resume = candidate.parsedResume;
                                                                                 const experience = resume?.experience?.[0];
                                                                                 const education = resume?.education?.[0];
-                                                                                
+
                                                                                 const candidateData = {
                                                                                     id: candidate.id || candidate._id || '',
                                                                                     name: candidate.name || candidate.fullName || 'Unknown',
@@ -1063,7 +1029,7 @@ const RecruiterDashboard = () => {
                                                                 )}
                                                             </div>
                                                         </CardContent>
-                                                </Card>
+                                                    </Card>
                                                 </React.Fragment>
                                             ))}
                                         </div>
@@ -1077,10 +1043,10 @@ const RecruiterDashboard = () => {
                         <div className="space-y-6">
                             <div className="flex items-center justify-between">
                                 <div className="flex-1">
-                            <SearchBox onSearch={handleSearch} />
+                                    <SearchBox onSearch={handleSearch} />
                                 </div>
-                                <Button 
-                                    variant="outline" 
+                                <Button
+                                    variant="outline"
                                     onClick={handleOpenPastSearches}
                                     className="ml-4 gap-2"
                                 >
@@ -1240,7 +1206,7 @@ const RecruiterDashboard = () => {
                                                                                 const resume = candidate.parsedResume;
                                                                                 const experience = resume?.experience?.[0];
                                                                                 const education = resume?.education?.[0];
-                                                                                
+
                                                                                 const candidateData = {
                                                                                     id: candidate.id || candidate._id || '',
                                                                                     name: candidate.name || candidate.fullName || 'Unknown',
@@ -1300,7 +1266,7 @@ const RecruiterDashboard = () => {
                                                                 )}
                                                             </div>
                                                         </CardContent>
-                                                </Card>
+                                                    </Card>
                                                 </React.Fragment>
                                             ))}
                                         </div>
@@ -1411,12 +1377,12 @@ const RecruiterDashboard = () => {
                                             />
                                         );
                                     })}
-                                        </div>
-                                        </div>
+                                </div>
+                            </div>
                         ) : hasSearched && !isSearching ? (
                             <div className="text-center py-12 text-gray-500">
                                 <p>No candidates found. Try adjusting your search query.</p>
-                        </div>
+                            </div>
                         ) : null}
                     </>
                 )}

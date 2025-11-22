@@ -38,7 +38,7 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
     if (!candidate) return null;
 
     // Extract candidate name from various possible locations
-    const candidateName = candidate.name || candidate.candidateName || candidate.candidate?.name || 'Candidate';
+    // const candidateName = candidate.name || candidate.candidateName || candidate.candidate?.name || 'Candidate';
 
     // Extract userId for resume download
     const userId = candidate.userId || candidate.id || candidate._id || candidate.candidate?.userId || candidate.candidate?.id || '';

@@ -23,7 +23,7 @@ export const EmailSequenceEditor: React.FC<EmailSequenceEditorProps> = ({
     isOpen,
     onClose,
     candidateId,
-    screeningId,
+    // screeningId,
     initialSubject,
     initialContent
 }) => {
