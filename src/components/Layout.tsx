@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { Briefcase, Users, LayoutDashboard, Settings } from 'lucide-react';
+import { Briefcase, Users, LayoutDashboard } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -10,7 +10,6 @@ const Layout = () => {
         { href: '/hr/dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { href: '/hr/create', label: 'Create Agent', icon: Briefcase },
         { href: '/recruiter/dashboard', label: 'Recruiter', icon: Users },
-        { href: '/debug', label: 'Debug', icon: Settings },
     ];
 
     return (
