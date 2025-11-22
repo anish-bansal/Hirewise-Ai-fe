@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card';
-import { Briefcase, Users, Search, ArrowRight, CheckCircle2, Zap, Shield } from 'lucide-react';
+import { Briefcase, Users, ArrowRight, CheckCircle2, Zap, Shield } from 'lucide-react';
 import { ThemeToggle } from '../components/ThemeToggle';
 
 const LandingPage = () => {
@@ -21,7 +21,7 @@ const LandingPage = () => {
                 </div>
                 <div className="flex flex-wrap justify-center gap-4">
                     <Button size="lg" asChild className="bg-black dark:bg-gray-800 hover:bg-black/90 dark:hover:bg-gray-700 text-white">
-                        <Link to="/hr/create">Post a Job</Link>
+                        <Link to="/hr/create">Create Agent</Link>
                     </Button>
                     <Button size="lg" variant="outline" asChild>
                         <Link to="/hr/dashboard">View Dashboard</Link>
@@ -32,7 +32,7 @@ const LandingPage = () => {
             {/* Role Selection Section */}
             <section className="container mx-auto px-6 py-16 space-y-12">
                 <h2 className="text-3xl font-bold text-center">Choose Your Path</h2>
-                <div className="grid gap-8 md:grid-cols-3">
+                <div className="grid gap-8 md:grid-cols-2 max-w-4xl mx-auto">
                     {/* HR Card */}
                     <Card className="hover:shadow-lg transition-shadow border-border">
                         <CardHeader>
@@ -49,30 +49,7 @@ const LandingPage = () => {
                                 <li className="flex items-center"><CheckCircle2 className="h-4 w-4 mr-2 text-green-500" /> Instant publishing</li>
                             </ul>
                             <Button className="w-full bg-black dark:bg-gray-800 hover:bg-black/90 dark:hover:bg-gray-700 text-white" asChild>
-                                <Link to="/hr/create">Create Job <ArrowRight className="ml-2 h-4 w-4" /></Link>
-                            </Button>
-                        </CardContent>
-                    </Card>
-
-                    {/* Candidate Card */}
-                    <Card className="hover:shadow-lg transition-shadow border-primary/20">
-                        <CardHeader>
-                            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                                <Search className="h-6 w-6 text-primary" />
-                            </div>
-                            <CardTitle>For Candidates</CardTitle>
-                            <CardDescription>Apply to jobs and showcase your skills via video.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <ul className="space-y-2 text-sm text-muted-foreground">
-                                <li className="flex items-center"><CheckCircle2 className="h-4 w-4 mr-2 text-green-500" /> Easy application</li>
-                                <li className="flex items-center"><CheckCircle2 className="h-4 w-4 mr-2 text-green-500" /> Video screening</li>
-                                <li className="flex items-center"><CheckCircle2 className="h-4 w-4 mr-2 text-green-500" /> Transparent process</li>
-                            </ul>
-                            <Button className="w-full" variant="secondary" asChild>
-                                {/* For demo purposes, link to a known job or the agent page of the first job if available, 
-                    but since we don't have a job list here, we'll link to the debug page to find one */}
-                                <Link to="/debug">Find Jobs <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                                <Link to="/hr/create">Create Agent <ArrowRight className="ml-2 h-4 w-4" /></Link>
                             </Button>
                         </CardContent>
                     </Card>

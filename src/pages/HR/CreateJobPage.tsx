@@ -79,14 +79,14 @@ const CreateJobPage = () => {
 
     const handleExtractFields = async () => {
         if (!extractText.trim()) return;
-        
+
         setIsExtracting(true);
         setFieldsExtracted(false);
         try {
             const extracted = await jobsApi.extractFields(extractText);
-            
+
             let filledCount = 0;
-            
+
             // Auto-fill form fields with animation delay
             const fillFields = async () => {
                 const highlightField = (fieldName: string) => {
@@ -99,7 +99,7 @@ const CreateJobPage = () => {
                         });
                     }, 2000);
                 };
-                
+
                 if (extracted.company_name) {
                     form.setValue('company_name', extracted.company_name);
                     highlightField('company_name');
@@ -142,18 +142,18 @@ const CreateJobPage = () => {
                     filledCount++;
                     await new Promise(resolve => setTimeout(resolve, 150));
                 }
-                
+
                 setExtractedFieldsCount(filledCount);
                 setFieldsExtracted(true);
-                
+
                 // Clear success message after 5 seconds
                 setTimeout(() => {
                     setFieldsExtracted(false);
                 }, 5000);
             };
-            
+
             await fillFields();
-            
+
             // Clear the extract text after successful extraction
             setExtractText('');
         } catch (error) {
@@ -215,10 +215,10 @@ const CreateJobPage = () => {
                         >
                             {/* Animated background gradient */}
                             <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                            
+
                             {/* Shimmer effect */}
                             <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-                            
+
                             {/* Content */}
                             <div className="relative flex items-center justify-center gap-2">
                                 {isExtracting ? (
@@ -237,11 +237,11 @@ const CreateJobPage = () => {
                                     </>
                                 )}
                             </div>
-                            
+
                             {/* Glow effect */}
                             <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-500 rounded-md blur opacity-30 group-hover:opacity-50 transition-opacity duration-300 -z-10" />
                         </button>
-                        
+
                         {/* Success notification */}
                         {fieldsExtracted && (
                             <div className="animate-in slide-in-from-top-2 duration-300 flex items-center gap-2 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-md shadow-sm">
@@ -271,8 +271,8 @@ const CreateJobPage = () => {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Company Name</label>
-                                <Input 
-                                    {...form.register('company_name')} 
+                                <Input
+                                    {...form.register('company_name')}
                                     placeholder="Acme Inc."
                                     className={highlightedFields.has('company_name') ? 'animate-pulse border-green-400 bg-green-50/50 ring-2 ring-green-300' : ''}
                                 />
@@ -280,8 +280,8 @@ const CreateJobPage = () => {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Role Title</label>
-                                <Input 
-                                    {...form.register('role')} 
+                                <Input
+                                    {...form.register('role')}
                                     placeholder="Senior Frontend Engineer"
                                     className={highlightedFields.has('role') ? 'animate-pulse border-green-400 bg-green-50/50 ring-2 ring-green-300' : ''}
                                 />
@@ -291,8 +291,8 @@ const CreateJobPage = () => {
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Seniority Level</label>
-                            <Input 
-                                {...form.register('seniority')} 
+                            <Input
+                                {...form.register('seniority')}
                                 placeholder="Senior / Lead / Staff"
                                 className={highlightedFields.has('seniority') ? 'animate-pulse border-green-400 bg-green-50/50 ring-2 ring-green-300' : ''}
                             />
@@ -303,9 +303,8 @@ const CreateJobPage = () => {
                             <label className="text-sm font-medium">Job Description</label>
                             <textarea
                                 {...form.register('raw_jd')}
-                                className={`flex min-h-[150px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
-                                    highlightedFields.has('raw_jd') ? 'animate-pulse border-green-400 bg-green-50/50 ring-2 ring-green-300' : ''
-                                }`}
+                                className={`flex min-h-[150px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${highlightedFields.has('raw_jd') ? 'animate-pulse border-green-400 bg-green-50/50 ring-2 ring-green-300' : ''
+                                    }`}
                                 placeholder="Paste the job description here (optional)..."
                             />
                             {form.formState.errors.raw_jd && <p className="text-red-500 text-xs">{form.formState.errors.raw_jd.message}</p>}
@@ -313,8 +312,8 @@ const CreateJobPage = () => {
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Must-Have Skills (comma separated)</label>
-                            <Input 
-                                {...form.register('must_have_skills')} 
+                            <Input
+                                {...form.register('must_have_skills')}
                                 placeholder="React, TypeScript, Node.js"
                                 className={highlightedFields.has('must_have_skills') ? 'animate-pulse border-green-400 bg-green-50/50 ring-2 ring-green-300' : ''}
                             />
@@ -323,8 +322,8 @@ const CreateJobPage = () => {
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Nice-to-Have Skills (comma separated)</label>
-                            <Input 
-                                {...form.register('nice_to_have')} 
+                            <Input
+                                {...form.register('nice_to_have')}
                                 placeholder="AWS, GraphQL"
                                 className={highlightedFields.has('nice_to_have') ? 'animate-pulse border-green-400 bg-green-50/50 ring-2 ring-green-300' : ''}
                             />
@@ -332,8 +331,8 @@ const CreateJobPage = () => {
 
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Budget / Salary Range</label>
-                            <Input 
-                                {...form.register('budget_info')} 
+                            <Input
+                                {...form.register('budget_info')}
                                 placeholder="$120k - $160k"
                                 className={highlightedFields.has('budget_info') ? 'animate-pulse border-green-400 bg-green-50/50 ring-2 ring-green-300' : ''}
                             />
@@ -341,7 +340,7 @@ const CreateJobPage = () => {
 
                         <Button type="submit" className="w-full bg-black dark:bg-gray-800 hover:bg-black/90 dark:hover:bg-gray-700 text-white" disabled={isLoading}>
                             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            {isLoading ? 'Processing...' : 'Create Job'}
+                            {isLoading ? 'Processing...' : 'Create Agent'}
                         </Button>
                     </form>
                 </CardContent>

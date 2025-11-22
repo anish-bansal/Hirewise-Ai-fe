@@ -313,14 +313,14 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
                                 <div className="min-w-0">
                                     <h1 className="text-2xl font-bold text-foreground truncate">{candidateName}</h1>
                                     <p className="text-muted-foreground font-medium truncate text-base mt-0.5">
-                                            {candidate.role || experience[0]?.title || 'Candidate'}
-                                        </p>
-                                        {(candidate.location || experience[0]?.location) && (
+                                        {candidate.role || experience[0]?.title || 'Candidate'}
+                                    </p>
+                                    {(candidate.location || experience[0]?.location) && (
                                         <div className="flex items-center gap-1.5 text-muted-foreground text-sm mt-0.5">
-                                                <MapPin className="h-3.5 w-3.5" />
-                                                {candidate.location || experience[0]?.location}
-                                            </div>
-                                        )}
+                                            <MapPin className="h-3.5 w-3.5" />
+                                            {candidate.location || experience[0]?.location}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
@@ -388,127 +388,127 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
                                         </>
                                     )}
                                 </Button>
+                            </div>
+                        </div>
+
+                        {/* Social Links */}
+                        <div className="flex flex-wrap gap-3 mt-4">
+                            {socialLinks.email && (
+                                <a href={`mailto:${socialLinks.email}`} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted text-muted-foreground text-sm hover:bg-muted/80 transition-colors">
+                                    <Mail className="h-3.5 w-3.5" />
+                                    {socialLinks.email}
+                                </a>
+                            )}
+                            {socialLinks.phone && (
+                                <a href={`tel:${socialLinks.phone}`} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted text-muted-foreground text-sm hover:bg-muted/80 transition-colors">
+                                    <Phone className="h-3.5 w-3.5" />
+                                    {socialLinks.phone}
+                                </a>
+                            )}
+                            {socialLinks.linkedin && (
+                                <a href={socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 text-sm hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors">
+                                    <Linkedin className="h-3.5 w-3.5" />
+                                    LinkedIn
+                                </a>
+                            )}
+                            {socialLinks.github && (
+                                <a href={socialLinks.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted text-foreground text-sm hover:bg-muted/80 transition-colors">
+                                    <Github className="h-3.5 w-3.5" />
+                                    GitHub
+                                </a>
+                            )}
+                            {socialLinks.portfolio && (
+                                <a href={socialLinks.portfolio} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 dark:bg-primary/20 text-sm hover:bg-primary/20 dark:hover:bg-primary/30 transition-colors">
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-black to-purple-600 dark:from-white dark:to-purple-400">Portfolio</span>
+                                </a>
+                            )}
                         </div>
                     </div>
-
-                    {/* Social Links */}
-                        <div className="flex flex-wrap gap-3 mt-4">
-                        {socialLinks.email && (
-                            <a href={`mailto:${socialLinks.email}`} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted text-muted-foreground text-sm hover:bg-muted/80 transition-colors">
-                                <Mail className="h-3.5 w-3.5" />
-                                {socialLinks.email}
-                            </a>
-                        )}
-                        {socialLinks.phone && (
-                            <a href={`tel:${socialLinks.phone}`} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted text-muted-foreground text-sm hover:bg-muted/80 transition-colors">
-                                <Phone className="h-3.5 w-3.5" />
-                                {socialLinks.phone}
-                            </a>
-                        )}
-                        {socialLinks.linkedin && (
-                            <a href={socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 text-sm hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors">
-                                <Linkedin className="h-3.5 w-3.5" />
-                                LinkedIn
-                            </a>
-                        )}
-                        {socialLinks.github && (
-                            <a href={socialLinks.github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted text-foreground text-sm hover:bg-muted/80 transition-colors">
-                                <Github className="h-3.5 w-3.5" />
-                                GitHub
-                            </a>
-                        )}
-                        {socialLinks.portfolio && (
-                            <a href={socialLinks.portfolio} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 dark:bg-primary/20 text-sm hover:bg-primary/20 dark:hover:bg-primary/30 transition-colors">
-                                <ExternalLink className="h-3.5 w-3.5" />
-                                <span className="bg-clip-text text-transparent bg-gradient-to-r from-black to-purple-600 dark:from-white dark:to-purple-400">Portfolio</span>
-                            </a>
-                        )}
-                    </div>
-                </div>
 
                     {/* Tabs Navigation */}
-                <div className="sticky top-0 z-30 bg-card border-b border-border shadow-sm">
-                    <div className="px-8">
-                        <div className="flex gap-6 overflow-x-auto no-scrollbar">
-                            {tabs.map((tab) => {
-                                const Icon = tab.icon;
-                                const isActive = activeTab === tab.id;
-                                return (
-                                    <button
-                                        key={tab.id}
-                                        onClick={() => {
-                                            setActiveTab(tab.id as any);
-                                            
-                                            // Use setTimeout to ensure DOM is updated and tab state is set
-                                            setTimeout(() => {
-                                                const element = document.getElementById(tab.id);
-                                                if (element && scrollContainerRef.current) {
-                                                    // Find the parent scroll container (Drawer's content wrapper)
-                                                    const findScrollContainer = (el: HTMLElement | null): HTMLElement | null => {
-                                                        if (!el) return null;
-                                                        const parent = el.parentElement;
-                                                        if (!parent) return null;
-                                                        const style = window.getComputedStyle(parent);
-                                                        if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
-                                                            return parent;
-                                                        }
-                                                        return findScrollContainer(parent);
-                                                    };
+                    <div className="sticky top-0 z-30 bg-card border-b border-border shadow-sm">
+                        <div className="px-8">
+                            <div className="flex gap-6 overflow-x-auto no-scrollbar">
+                                {tabs.map((tab) => {
+                                    const Icon = tab.icon;
+                                    const isActive = activeTab === tab.id;
+                                    return (
+                                        <button
+                                            key={tab.id}
+                                            onClick={() => {
+                                                setActiveTab(tab.id as any);
 
-                                                    const scrollContainer = findScrollContainer(scrollContainerRef.current);
-                                                    if (scrollContainer) {
-                                                        const tabsHeight = 60; // Height of sticky tabs
-                                                        const elementRect = element.getBoundingClientRect();
-                                                        const containerRect = scrollContainer.getBoundingClientRect();
-                                                        
-                                                        // Calculate scroll position: element top relative to container minus tabs height
-                                                        const scrollTop = scrollContainer.scrollTop;
-                                                        const elementTopRelativeToContainer = elementRect.top - containerRect.top + scrollTop;
-                                                        const targetScrollTop = elementTopRelativeToContainer - tabsHeight;
-                                                        
-                                                        scrollContainer.scrollTo({
-                                                            top: Math.max(0, targetScrollTop),
-                                                            behavior: 'smooth'
-                                                        });
-                                                    } else {
-                                                        // Fallback to scrollIntoView if container not found
-                                                        element.scrollIntoView({ 
-                                                            behavior: 'smooth', 
-                                                            block: 'start',
-                                                            inline: 'nearest'
-                                                        });
+                                                // Use setTimeout to ensure DOM is updated and tab state is set
+                                                setTimeout(() => {
+                                                    const element = document.getElementById(tab.id);
+                                                    if (element && scrollContainerRef.current) {
+                                                        // Find the parent scroll container (Drawer's content wrapper)
+                                                        const findScrollContainer = (el: HTMLElement | null): HTMLElement | null => {
+                                                            if (!el) return null;
+                                                            const parent = el.parentElement;
+                                                            if (!parent) return null;
+                                                            const style = window.getComputedStyle(parent);
+                                                            if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+                                                                return parent;
+                                                            }
+                                                            return findScrollContainer(parent);
+                                                        };
+
+                                                        const scrollContainer = findScrollContainer(scrollContainerRef.current);
+                                                        if (scrollContainer) {
+                                                            const tabsHeight = 60; // Height of sticky tabs
+                                                            const elementRect = element.getBoundingClientRect();
+                                                            const containerRect = scrollContainer.getBoundingClientRect();
+
+                                                            // Calculate scroll position: element top relative to container minus tabs height
+                                                            const scrollTop = scrollContainer.scrollTop;
+                                                            const elementTopRelativeToContainer = elementRect.top - containerRect.top + scrollTop;
+                                                            const targetScrollTop = elementTopRelativeToContainer - tabsHeight;
+
+                                                            scrollContainer.scrollTo({
+                                                                top: Math.max(0, targetScrollTop),
+                                                                behavior: 'smooth'
+                                                            });
+                                                        } else {
+                                                            // Fallback to scrollIntoView if container not found
+                                                            element.scrollIntoView({
+                                                                behavior: 'smooth',
+                                                                block: 'start',
+                                                                inline: 'nearest'
+                                                            });
+                                                        }
                                                     }
-                                                }
-                                            }, 10);
-                                        }}
-                                        className={`
+                                                }, 10);
+                                            }}
+                                            className={`
                                         flex items-center gap-2 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap
                                         ${isActive
-                                            ? 'border-primary text-primary'
-                                            : 'border-transparent text-muted-foreground hover:text-primary hover:border-primary/30'}
+                                                    ? 'border-primary text-primary'
+                                                    : 'border-transparent text-muted-foreground hover:text-primary hover:border-primary/30'}
                                     `}
-                                >
-                                    <Icon className="h-4 w-4" />
-                                    {tab.label}
-                                </button>
-                            );
-                        })}
+                                        >
+                                            <Icon className="h-4 w-4" />
+                                            {tab.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
-                </div>
 
                     {/* Scrollable Content */}
                     <div
-                    ref={scrollContainerRef}
+                        ref={scrollContainerRef}
                         id="scroll-container"
-                    className="flex-1 p-8 bg-muted/30"
+                        className="flex-1 p-8 bg-muted/30"
                     >
                         <div className="space-y-12 pb-20">
                             {/* Overview Section */}
-                        <div id="overview" className="scroll-mt-20 space-y-8">
+                            <div id="overview" className="scroll-mt-20 space-y-8">
                                 {/* Premium Scores Section */}
                                 <section>
-                                <h3 className="text-lg font-semibold text-foreground mb-4">Match Analysis</h3>
+                                    <h3 className="text-lg font-semibold text-foreground mb-4">Match Analysis</h3>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         {scoreItems.map((item, index) => {
                                             const isNA = item.value === null || item.value === undefined;
@@ -516,11 +516,11 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
                                             const circumference = 2 * Math.PI * 24; // radius 24
 
                                             return (
-                                        <motion.div
-                                            key={item.id}
-                                            initial={{ opacity: 0, y: 20 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: index * 0.1, duration: 0.4 }}
+                                                <motion.div
+                                                    key={item.id}
+                                                    initial={{ opacity: 0, y: 20 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    transition={{ delay: index * 0.1, duration: 0.4 }}
                                                     className="bg-card rounded-xl p-5 shadow-sm border border-border hover:shadow-md transition-shadow flex items-center justify-between group"
                                                 >
                                                     <div className="flex items-center gap-4 overflow-hidden">
@@ -530,7 +530,7 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
                                                         <div className="min-w-0">
                                                             <p className="text-base font-semibold text-foreground truncate">{item.label}</p>
                                                             <p className="text-sm text-muted-foreground mt-0.5 line-clamp-1">{item.description}</p>
-                                                    </div>
+                                                        </div>
                                                     </div>
 
                                                     <div className="relative h-16 w-16 flex items-center justify-center flex-shrink-0">
@@ -567,185 +567,226 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
                                                         <div className="absolute inset-0 flex items-center justify-center">
                                                             <span className={`text-sm font-bold ${isNA ? 'text-muted-foreground' : item.color}`}>
                                                                 {isNA ? 'NA' : `${scoreValue}%`}
-                                                </span>
-                                            </div>
-                                            </div>
-                                        </motion.div>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </motion.div>
                                             );
                                         })}
-                                </div>
-                            </section>
-
-                            {/* Summary */}
-                            <section className="bg-card rounded-xl p-6 shadow-sm border border-border">
-                                <h3 className="text-lg font-semibold text-foreground mb-4">Professional Summary</h3>
-                                <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
-                                    {parsedResume.resumeSummary || parsedResume.profile || candidate.bio || 'No summary provided.'}
-                                </p>
-                            </section>
-
-                            {/* Key Highlights */}
-                            {candidate.topReasons && candidate.topReasons.length > 0 && (
-                                <section className="bg-card rounded-xl p-6 shadow-sm border border-border">
-                                    <h3 className="text-lg font-semibold text-foreground mb-4">Why they're a match</h3>
-                                    <ul className="space-y-3">
-                                        {candidate.topReasons.map((reason: string, i: number) => (
-                                            <li key={i} className="flex items-start gap-3 text-foreground">
-                                                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-green-500 flex-shrink-0" />
-                                                {reason}
-                                            </li>
-                                        ))}
-                                    </ul>
+                                    </div>
                                 </section>
-                            )}
-                        </div>
 
-                        {/* Experience Section */}
-                        <div id="experience" className="scroll-mt-20 space-y-6">
-                            <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-                                <Briefcase className="h-5 w-5 text-muted-foreground" />
-                                Experience
-                            </h3>
-                            {experience.length > 0 ? (
-                                experience.map((role: any, i: number) => (
-                                    <div key={i} className="bg-card rounded-xl p-6 shadow-sm border border-border relative">
-                                        {/* Timeline connector */}
-                                        {i !== experience.length - 1 && (
-                                            <div className="absolute left-10 top-20 bottom-0 w-0.5 bg-border" />
+                                {/* Summary */}
+                                <section className="bg-card rounded-xl p-6 shadow-sm border border-border">
+                                    <h3 className="text-lg font-semibold text-foreground mb-4">Professional Summary</h3>
+                                    <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
+                                        {parsedResume.resumeSummary || parsedResume.profile || candidate.bio || 'No summary provided.'}
+                                    </p>
+                                </section>
+
+                                {/* Key Highlights */}
+                                {candidate.topReasons && candidate.topReasons.length > 0 && (
+                                    <section className="bg-card rounded-xl p-6 shadow-sm border border-border">
+                                        <h3 className="text-lg font-semibold text-foreground mb-4">Why they're a match</h3>
+                                        <ul className="space-y-3">
+                                            {candidate.topReasons.map((reason: string, i: number) => (
+                                                <li key={i} className="flex items-start gap-3 text-foreground">
+                                                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-green-500 flex-shrink-0" />
+                                                    {reason}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </section>
+                                )}
+
+                                {/* Call Summary */}
+                                {(candidate.phoneInterviewSummaries && candidate.phoneInterviewSummaries.length > 0) && (
+                                    <section className="bg-card rounded-xl p-6 shadow-sm border border-border">
+                                        <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+                                            <Phone className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                            Call Summary
+                                        </h3>
+                                        <div className="space-y-4">
+                                            {candidate.phoneInterviewSummaries.map((summary: any, i: number) => (
+                                                <div key={i} className="border-l-2 border-green-500 pl-4">
+                                                    {summary.callDate && (
+                                                        <p className="text-xs text-muted-foreground mb-2">
+                                                            {new Date(summary.callDate).toLocaleDateString('en-US', {
+                                                                year: 'numeric',
+                                                                month: 'long',
+                                                                day: 'numeric',
+                                                                hour: '2-digit',
+                                                                minute: '2-digit'
+                                                            })}
+                                                        </p>
+                                                    )}
+                                                    <p className="text-foreground leading-relaxed whitespace-pre-line">
+                                                        {summary.summary || summary.transcript || 'No summary available'}
+                                                    </p>
+                                                    {summary.sentiment && (
+                                                        <div className="mt-2 flex items-center gap-2">
+                                                            <span className="text-xs font-medium text-muted-foreground">Sentiment:</span>
+                                                            <span className={`text-xs font-semibold ${summary.sentiment === 'positive' ? 'text-green-600' :
+                                                                    summary.sentiment === 'negative' ? 'text-red-600' :
+                                                                        'text-yellow-600'
+                                                                }`}>
+                                                                {summary.sentiment.charAt(0).toUpperCase() + summary.sentiment.slice(1)}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </section>
+                                )}
+                            </div>
+
+                            {/* Experience Section */}
+                            <div id="experience" className="scroll-mt-20 space-y-6">
+                                <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+                                    <Briefcase className="h-5 w-5 text-muted-foreground" />
+                                    Experience
+                                </h3>
+                                {experience.length > 0 ? (
+                                    experience.map((role: any, i: number) => (
+                                        <div key={i} className="bg-card rounded-xl p-6 shadow-sm border border-border relative">
+                                            {/* Timeline connector */}
+                                            {i !== experience.length - 1 && (
+                                                <div className="absolute left-10 top-20 bottom-0 w-0.5 bg-border" />
                                             )}
 
                                             <div className="flex gap-4">
-                                            <div className="h-12 w-12 rounded-lg bg-blue-50 dark:bg-blue-950 flex items-center justify-center text-blue-600 dark:text-blue-400 flex-shrink-0">
+                                                <div className="h-12 w-12 rounded-lg bg-blue-50 dark:bg-blue-950 flex items-center justify-center text-blue-600 dark:text-blue-400 flex-shrink-0">
                                                     <Building2 className="h-6 w-6" />
                                                 </div>
                                                 <div className="flex-1">
                                                     <div className="flex justify-between items-start">
                                                         <div>
-                                                        <h3 className="text-lg font-semibold text-foreground">{role.title}</h3>
-                                                        <p className="font-medium"><span className="bg-clip-text text-transparent bg-gradient-to-r from-black to-purple-600 dark:from-white dark:to-purple-400">{role.company}</span></p>
+                                                            <h3 className="text-lg font-semibold text-foreground">{role.title}</h3>
+                                                            <p className="font-medium"><span className="bg-clip-text text-transparent bg-gradient-to-r from-black to-purple-600 dark:from-white dark:to-purple-400">{role.company}</span></p>
+                                                        </div>
+                                                        <span className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded">
+                                                            {role.duration}
+                                                        </span>
                                                     </div>
-                                                    <span className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded">
-                                                        {role.duration}
-                                                    </span>
+                                                    {role.location && (
+                                                        <p className="text-sm text-muted-foreground mt-1">{role.location}</p>
+                                                    )}
+                                                    {role.description && (
+                                                        <p className="text-muted-foreground mt-3 whitespace-pre-line">{role.description}</p>
+                                                    )}
+                                                    {role.responsibilities && role.responsibilities.length > 0 && (
+                                                        <ul className="mt-3 space-y-1">
+                                                            {role.responsibilities.map((resp: string, j: number) => (
+                                                                <li key={j} className="text-sm text-muted-foreground flex items-start gap-2">
+                                                                    <span className="mt-1.5 h-1 w-1 rounded-full bg-muted-foreground flex-shrink-0" />
+                                                                    {resp}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    )}
                                                 </div>
-                                                {role.location && (
-                                                    <p className="text-sm text-muted-foreground mt-1">{role.location}</p>
-                                                )}
-                                                {role.description && (
-                                                    <p className="text-muted-foreground mt-3 whitespace-pre-line">{role.description}</p>
-                                                )}
-                                                {role.responsibilities && role.responsibilities.length > 0 && (
-                                                    <ul className="mt-3 space-y-1">
-                                                        {role.responsibilities.map((resp: string, j: number) => (
-                                                            <li key={j} className="text-sm text-muted-foreground flex items-start gap-2">
-                                                                <span className="mt-1.5 h-1 w-1 rounded-full bg-muted-foreground flex-shrink-0" />
-                                                                {resp}
-                                                            </li>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-12 text-muted-foreground bg-card rounded-xl border border-border">No experience listed</div>
+                                )}
+                            </div>
+
+                            {/* Education Section */}
+                            <div id="education" className="scroll-mt-20 space-y-6">
+                                <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+                                    <GraduationCap className="h-5 w-5 text-muted-foreground" />
+                                    Education
+                                </h3>
+                                {education.length > 0 ? (
+                                    education.map((edu: any, i: number) => (
+                                        <div key={i} className="bg-card rounded-xl p-6 shadow-sm border border-border">
+                                            <div className="flex gap-4">
+                                                <div className="h-12 w-12 rounded-lg bg-orange-50 dark:bg-orange-950 flex items-center justify-center text-orange-600 dark:text-orange-400 flex-shrink-0">
+                                                    <GraduationCap className="h-6 w-6" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="flex justify-between items-start">
+                                                        <div>
+                                                            <h3 className="text-lg font-semibold text-foreground">{edu.institution}</h3>
+                                                            <p className="text-foreground font-medium">{edu.degree} {edu.field && `in ${edu.field}`}</p>
+                                                        </div>
+                                                        <span className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded">
+                                                            {edu.duration}
+                                                        </span>
+                                                    </div>
+                                                    {edu.gpa && (
+                                                        <p className="text-sm text-muted-foreground mt-2">GPA: {edu.gpa}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-12 text-muted-foreground bg-card rounded-xl border border-border">No education listed</div>
+                                )}
+                            </div>
+
+                            {/* Projects Section */}
+                            <div id="projects" className="scroll-mt-20 space-y-6">
+                                <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+                                    <Code2 className="h-5 w-5 text-muted-foreground" />
+                                    Projects
+                                </h3>
+                                {projects.length > 0 ? (
+                                    projects.map((project: any, i: number) => (
+                                        <div key={i} className="bg-card rounded-xl p-6 shadow-sm border border-border">
+                                            <div className="flex justify-between items-start mb-3">
+                                                <h3 className="text-lg font-semibold text-foreground">{project.name}</h3>
+                                                {project.links && project.links.length > 0 && (
+                                                    <div className="flex gap-2">
+                                                        {project.links.map((link: string, j: number) => (
+                                                            <a key={j} href={link} target="_blank" rel="noopener noreferrer" className="text-purple-600 dark:text-purple-400 hover:text-purple-500 dark:hover:text-purple-300 transition-colors">
+                                                                <ExternalLink className="h-4 w-4" />
+                                                            </a>
                                                         ))}
-                                                    </ul>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="text-center py-12 text-muted-foreground bg-card rounded-xl border border-border">No experience listed</div>
-                            )}
-                        </div>
-
-                        {/* Education Section */}
-                        <div id="education" className="scroll-mt-20 space-y-6">
-                            <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-                                <GraduationCap className="h-5 w-5 text-muted-foreground" />
-                                Education
-                            </h3>
-                            {education.length > 0 ? (
-                                education.map((edu: any, i: number) => (
-                                    <div key={i} className="bg-card rounded-xl p-6 shadow-sm border border-border">
-                                        <div className="flex gap-4">
-                                            <div className="h-12 w-12 rounded-lg bg-orange-50 dark:bg-orange-950 flex items-center justify-center text-orange-600 dark:text-orange-400 flex-shrink-0">
-                                                <GraduationCap className="h-6 w-6" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <h3 className="text-lg font-semibold text-foreground">{edu.institution}</h3>
-                                                        <p className="text-foreground font-medium">{edu.degree} {edu.field && `in ${edu.field}`}</p>
                                                     </div>
-                                                    <span className="text-sm text-muted-foreground bg-muted px-2 py-1 rounded">
-                                                        {edu.duration}
-                                                    </span>
-                                                </div>
-                                                {edu.gpa && (
-                                                    <p className="text-sm text-muted-foreground mt-2">GPA: {edu.gpa}</p>
                                                 )}
                                             </div>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="text-center py-12 text-muted-foreground bg-card rounded-xl border border-border">No education listed</div>
-                            )}
-                        </div>
-
-                        {/* Projects Section */}
-                        <div id="projects" className="scroll-mt-20 space-y-6">
-                            <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-                                <Code2 className="h-5 w-5 text-muted-foreground" />
-                                Projects
-                            </h3>
-                            {projects.length > 0 ? (
-                                projects.map((project: any, i: number) => (
-                                    <div key={i} className="bg-card rounded-xl p-6 shadow-sm border border-border">
-                                        <div className="flex justify-between items-start mb-3">
-                                            <h3 className="text-lg font-semibold text-foreground">{project.name}</h3>
-                                            {project.links && project.links.length > 0 && (
-                                                <div className="flex gap-2">
-                                                    {project.links.map((link: string, j: number) => (
-                                                        <a key={j} href={link} target="_blank" rel="noopener noreferrer" className="text-purple-600 dark:text-purple-400 hover:text-purple-500 dark:hover:text-purple-300 transition-colors">
-                                                            <ExternalLink className="h-4 w-4" />
-                                                        </a>
-                                                    ))}
-                                                </div>
+                                            {project.description && (
+                                                <p className="text-muted-foreground mb-3 whitespace-pre-line">{project.description}</p>
                                             )}
-                                        </div>
-                                        {project.description && (
-                                            <p className="text-muted-foreground mb-3 whitespace-pre-line">{project.description}</p>
-                                        )}
-                                        {project.technologies && project.technologies.length > 0 && (
-                                            <div className="flex flex-wrap gap-2">
-                                                {project.technologies.map((tech: string, j: number) => (
-                                                    <span key={j} className="px-2 py-1 rounded bg-primary/10 dark:bg-primary/20 text-xs font-medium">
-                                                        <span className="bg-clip-text text-transparent bg-gradient-to-r from-black to-purple-600 dark:from-white dark:to-purple-400">{tech}</span>
-                                                    </span>
+                                            {project.technologies && project.technologies.length > 0 && (
+                                                <div className="flex flex-wrap gap-2">
+                                                    {project.technologies.map((tech: string, j: number) => (
+                                                        <span key={j} className="px-2 py-1 rounded bg-primary/10 dark:bg-primary/20 text-xs font-medium">
+                                                            <span className="bg-clip-text text-transparent bg-gradient-to-r from-black to-purple-600 dark:from-white dark:to-purple-400">{tech}</span>
+                                                        </span>
                                                     ))}
                                                 </div>
                                             )}
                                         </div>
                                     ))
                                 ) : (
-                                <div className="text-center py-12 text-muted-foreground bg-card rounded-xl border border-border">No projects listed</div>
+                                    <div className="text-center py-12 text-muted-foreground bg-card rounded-xl border border-border">No projects listed</div>
                                 )}
                             </div>
 
                             {/* Skills Section */}
-                        <div id="skills" className="scroll-mt-20 space-y-6">
-                            <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-                                <Award className="h-5 w-5 text-muted-foreground" />
+                            <div id="skills" className="scroll-mt-20 space-y-6">
+                                <h3 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+                                    <Award className="h-5 w-5 text-muted-foreground" />
                                     Skills
                                 </h3>
-                            <div className="bg-card rounded-xl p-6 shadow-sm border border-border">
+                                <div className="bg-card rounded-xl p-6 shadow-sm border border-border">
                                     <div className="space-y-8">
                                         {Object.entries(skills).map(([category, items]: [string, any]) => {
                                             if (!items || items.length === 0) return null;
                                             return (
                                                 <div key={category}>
-                                                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                                                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                                                         {category.replace(/([A-Z])/g, ' $1').trim()}
                                                     </h3>
                                                     <div className="flex flex-wrap gap-2">
                                                         {items.map((skill: string, i: number) => (
-                                                        <span key={i} className="px-3 py-1.5 rounded-lg bg-primary/10 dark:bg-primary/20 text-primary text-sm font-medium border border-primary/20 dark:border-primary/30">
+                                                            <span key={i} className="px-3 py-1.5 rounded-lg bg-primary/10 dark:bg-primary/20 text-primary text-sm font-medium border border-primary/20 dark:border-primary/30">
                                                                 {skill}
                                                             </span>
                                                         ))}
@@ -755,25 +796,25 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
                                         })}
                                         {candidate.tags && (
                                             <div>
-                                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                                                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                                                     Other Tags
                                                 </h3>
                                                 <div className="flex flex-wrap gap-2">
                                                     {candidate.tags.map((tag: string, i: number) => (
-                                                    <span key={i} className="px-3 py-1.5 rounded-lg bg-muted text-foreground text-sm font-medium">
+                                                        <span key={i} className="px-3 py-1.5 rounded-lg bg-muted text-foreground text-sm font-medium">
                                                             {tag}
                                                         </span>
                                                     ))}
                                                 </div>
                                             </div>
                                         )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </Drawer>
+            </Drawer>
             <EmailSequenceEditor
                 isOpen={isEmailEditorOpen}
                 onClose={() => {

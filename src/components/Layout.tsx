@@ -8,7 +8,7 @@ const Layout = () => {
 
     const navItems = [
         { href: '/hr/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { href: '/hr/create', label: 'Create Job', icon: Briefcase },
+        { href: '/hr/create', label: 'Create Agent', icon: Briefcase },
         { href: '/recruiter/dashboard', label: 'Recruiter', icon: Users },
         { href: '/debug', label: 'Debug', icon: Settings },
     ];

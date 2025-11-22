@@ -3,8 +3,7 @@ import { createPortal } from 'react-dom';
 import {
     ChevronLeft, Plus, Mail, Phone,
     Bold, Italic, Underline, List, Link as LinkIcon,
-    MoreHorizontal, ChevronDown, Play,
-    Wand2, Code
+    MoreHorizontal, ChevronDown, Trash2
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 
@@ -58,10 +57,23 @@ export const EmailSequenceEditor: React.FC<EmailSequenceEditorProps> = ({
     const activeStep = steps.find(s => s.id === activeStepId) || steps[0];
 
     const addStep = (type: 'Email' | 'Call') => {
-        const newId = steps.length + 1;
+        const newId = Math.max(...steps.map(s => s.id)) + 1;
         setSteps([...steps, { id: newId, type, label: `Step ${newId}`, content: '' }]);
         setActiveStepId(newId);
         setIsAddStepOpen(false);
+    };
+
+    const deleteStep = (stepId: number) => {
+        if (steps.length === 1) {
+            alert('You must have at least one step');
+            return;
+        }
+        const newSteps = steps.filter(s => s.id !== stepId);
+        setSteps(newSteps);
+        // If we deleted the active step, switch to the first step
+        if (activeStepId === stepId) {
+            setActiveStepId(newSteps[0].id);
+        }
     };
 
     const handleContentChange = (content: string) => {
@@ -106,11 +118,6 @@ export const EmailSequenceEditor: React.FC<EmailSequenceEditorProps> = ({
 
     if (!isOpen) return null;
 
-    const variables = [
-        'Spintax Greeting', 'First Name', 'Company', 'Job Title',
-        'Education', 'Sender First Name', 'More'
-    ];
-
     return createPortal(
         <div className="fixed inset-0 z-[60] bg-background flex flex-col">
             {/* Header */}
@@ -143,27 +150,37 @@ export const EmailSequenceEditor: React.FC<EmailSequenceEditorProps> = ({
                 <div className="w-64 border-r border-border bg-muted flex flex-col">
                     <div className="p-4 border-b border-border">
                         <h2 className="font-semibold text-foreground">Steps ({steps.length})</h2>
-                        <p className="text-xs text-muted-foreground mt-1">We recommend having 3+ steps.</p>
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-4 space-y-3">
                         {steps.map((step) => (
                             <div
                                 key={step.id}
-                                className={`p-3 rounded-lg border cursor-pointer transition-all ${activeStepId === step.id
+                                className={`p-3 rounded-lg border transition-all group ${activeStepId === step.id
                                     ? 'bg-primary/10 dark:bg-primary/20 border-primary/20 dark:border-primary/30 shadow-sm'
                                     : 'bg-card border-border hover:border-primary/30'
                                     }`}
-                                onClick={() => setActiveStepId(step.id)}
                             >
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${activeStepId === step.id ? 'bg-primary/20 dark:bg-primary/30 text-primary' : 'bg-muted text-muted-foreground'
-                                        }`}>
-                                        Step {step.id}
-                                    </span>
-                                    <span className="text-sm font-medium text-foreground">{step.type}</span>
+                                <div className="flex items-center justify-between mb-1">
+                                    <div className="flex items-center gap-2 cursor-pointer flex-1" onClick={() => setActiveStepId(step.id)}>
+                                        <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${activeStepId === step.id ? 'bg-primary/20 dark:bg-primary/30 text-primary' : 'bg-muted text-muted-foreground'
+                                            }`}>
+                                            Step {step.id}
+                                        </span>
+                                        <span className="text-sm font-medium text-foreground">{step.type}</span>
+                                    </div>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            deleteStep(step.id);
+                                        }}
+                                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-50 dark:hover:bg-red-950 rounded"
+                                        title="Delete step"
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5 text-red-500 dark:text-red-400" />
+                                    </button>
                                 </div>
-                                <p className="text-xs text-muted-foreground">Nov 21, 3:47 PM (+0530)</p>
+                                <p className="text-xs text-muted-foreground cursor-pointer" onClick={() => setActiveStepId(step.id)}>Nov 21, 3:47 PM (+0530)</p>
                             </div>
                         ))}
                     </div>
@@ -244,43 +261,14 @@ export const EmailSequenceEditor: React.FC<EmailSequenceEditorProps> = ({
                                                 </div>
                                             </div>
                                         </div>
-
-                                        <div>
-                                            <label className="text-sm font-semibold text-foreground block mb-3">Variables</label>
-                                            <div className="flex flex-wrap gap-2 items-center">
-                                                <Button size="sm" className="bg-primary hover:bg-primary/90 text-white gap-2 h-8">
-                                                    <Play className="h-3 w-3 fill-current" />
-                                                    Preview and Test
-                                                </Button>
-                                                <Button variant="outline" size="sm" className="gap-2 h-8 bg-primary/10 dark:bg-primary/20 text-primary border-primary/20 dark:border-primary/30 hover:bg-primary/20 dark:hover:bg-primary/30">
-                                                    <Wand2 className="h-3 w-3" />
-                                                    AI Command
-                                                </Button>
-                                                <Button variant="outline" size="sm" className="gap-2 h-8 bg-primary/10 dark:bg-primary/20 text-primary border-primary/20 dark:border-primary/30 hover:bg-primary/20 dark:hover:bg-primary/30">
-                                                    <Code className="h-3 w-3" />
-                                                    Snippets
-                                                </Button>
-                                            </div>
-                                            <div className="flex flex-wrap gap-2 mt-3">
-                                                {variables.map((variable) => (
-                                                    <button
-                                                        key={variable}
-                                                        className="px-2 py-1 rounded bg-primary/10 dark:bg-primary/20 text-primary text-xs font-medium hover:bg-primary/20 dark:hover:bg-primary/30 transition-colors"
-                                                    >
-                                                        {variable}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
                                     </>
                                 ) : (
                                     <div className="space-y-4">
                                         <div className="bg-blue-50 dark:bg-blue-950 border border-blue-100 dark:border-blue-800 rounded-lg p-4 text-sm text-blue-800 dark:text-blue-300">
                                             <p className="font-medium">Call Task</p>
                                             <p className="mt-1">This step will create a task for you to call the candidate.</p>
-                                            <p className="mt-2 text-xs text-blue-600 dark:text-blue-400 font-medium flex items-center gap-1">
-                                                <Wand2 className="h-3 w-3" />
-                                                AI-based call summary is available once scheduled call is completed.
+                                            <p className="mt-2 text-xs text-blue-600 dark:text-blue-400 font-medium">
+                                                AI-based call summary will be available once the scheduled call is completed.
                                             </p>
                                         </div>
                                     </div>
@@ -341,16 +329,7 @@ export const EmailSequenceEditor: React.FC<EmailSequenceEditorProps> = ({
                                         />
                                     </div>
                                 </>
-                            ) : (
-                                <div className="p-6 min-h-[300px]">
-
-                                    <textarea
-                                        className="w-full h-full min-h-[300px] resize-none border border-input rounded-lg p-4 focus:ring-primary focus:border-primary text-foreground text-base bg-background"
-                                        value={activeStep.content}
-                                        onChange={(e) => handleContentChange(e.target.value)}
-                                    />
-                                </div>
-                            )}
+                            ) : null}
                         </div>
                     </div>
                 </div>
