@@ -259,7 +259,7 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
             <Drawer isOpen={isOpen} onClose={onClose} title="Candidate Profile" width="max-w-6xl">
                 <div className="flex flex-col h-full">
                     {/* Profile Header */}
-                    <div className="px-8 py-6 bg-white border-b border-gray-100">
+                    <div className="px-8 py-6 bg-white border-b border-gray-100 flex-shrink-0">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-5">
                                 <div className="h-16 w-16 rounded-2xl bg-purple-100 flex items-center justify-center text-purple-600 text-2xl font-bold flex-shrink-0">
@@ -386,7 +386,7 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
                     </div>
 
                     {/* Tabs Navigation */}
-                    <div className="px-8 border-b border-gray-100 sticky top-0 bg-white z-10">
+                    <div className="px-8 border-b border-gray-100 sticky top-0 bg-white z-10 flex-shrink-0 shadow-sm">
                         <div className="flex gap-6 overflow-x-auto no-scrollbar">
                             {tabs.map((tab) => {
                                 const Icon = tab.icon;
@@ -394,7 +394,14 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
                                 return (
                                     <button
                                         key={tab.id}
-                                        onClick={() => setActiveTab(tab.id as any)}
+                                        onClick={() => {
+                                            const element = document.getElementById(tab.id);
+                                            if (element) {
+                                                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                                // Small offset adjustment if needed, but scroll-margin-top on section handles it better
+                                            }
+                                            setActiveTab(tab.id as any);
+                                        }}
                                         className={`
                                         flex items-center gap-2 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap
                                         ${isActive
@@ -410,10 +417,42 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
                         </div>
                     </div>
 
-                    {/* Tab Content */}
-                    <div className="flex-1 overflow-y-auto p-8 bg-gray-50/50">
-                        {activeTab === 'overview' && (
-                            <div className="space-y-8">
+                    {/* Scrollable Content */}
+                    <div
+                        id="scroll-container"
+                        className="flex-1 overflow-y-auto p-8 bg-gray-50/50 scroll-smooth"
+                        onScroll={(e) => {
+                            const container = e.currentTarget;
+                            const sections = tabs.map(tab => document.getElementById(tab.id));
+
+                            // Find the section that is currently most visible or at the top
+                            // Simple logic: find the first section whose top is >= container's top (minus some offset)
+                            // Or better: find the section that covers the middle of the viewport
+
+                            const containerRect = container.getBoundingClientRect();
+
+                            let currentSection = tabs[0].id;
+
+                            for (const section of sections) {
+                                if (!section) continue;
+                                const rect = section.getBoundingClientRect();
+                                // Check if section top is within the top part of the container
+                                // or if the section covers a significant portion of the view
+                                const offset = rect.top - containerRect.top;
+
+                                if (offset <= 100) { // 100px buffer from top
+                                    currentSection = section.id;
+                                }
+                            }
+
+                            if (currentSection !== activeTab) {
+                                setActiveTab(currentSection as any);
+                            }
+                        }}
+                    >
+                        <div className="space-y-12 pb-20">
+                            {/* Overview Section */}
+                            <div id="overview" className="scroll-mt-24 space-y-8">
                                 {/* Premium Scores Section */}
                                 <section>
                                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Match Analysis</h3>
@@ -507,10 +546,13 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
                                     </section>
                                 )}
                             </div>
-                        )}
 
-                        {activeTab === 'experience' && (
-                            <div className="space-y-6">
+                            {/* Experience Section */}
+                            <div id="experience" className="scroll-mt-24 space-y-6">
+                                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                    <Briefcase className="h-5 w-5 text-gray-500" />
+                                    Experience
+                                </h3>
                                 {experience.length > 0 ? (
                                     experience.map((role: any, i: number) => (
                                         <div key={i} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 relative">
@@ -556,13 +598,16 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="text-center py-12 text-gray-500">No experience listed</div>
+                                    <div className="text-center py-12 text-gray-500 bg-white rounded-xl border border-gray-100">No experience listed</div>
                                 )}
                             </div>
-                        )}
 
-                        {activeTab === 'education' && (
-                            <div className="space-y-6">
+                            {/* Education Section */}
+                            <div id="education" className="scroll-mt-24 space-y-6">
+                                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                    <GraduationCap className="h-5 w-5 text-gray-500" />
+                                    Education
+                                </h3>
                                 {education.length > 0 ? (
                                     education.map((edu: any, i: number) => (
                                         <div key={i} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
@@ -588,13 +633,16 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="text-center py-12 text-gray-500">No education listed</div>
+                                    <div className="text-center py-12 text-gray-500 bg-white rounded-xl border border-gray-100">No education listed</div>
                                 )}
                             </div>
-                        )}
 
-                        {activeTab === 'projects' && (
-                            <div className="space-y-6">
+                            {/* Projects Section */}
+                            <div id="projects" className="scroll-mt-24 space-y-6">
+                                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                    <Code2 className="h-5 w-5 text-gray-500" />
+                                    Projects
+                                </h3>
                                 {projects.length > 0 ? (
                                     projects.map((project: any, i: number) => (
                                         <div key={i} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
@@ -635,48 +683,53 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="text-center py-12 text-gray-500">No projects listed</div>
+                                    <div className="text-center py-12 text-gray-500 bg-white rounded-xl border border-gray-100">No projects listed</div>
                                 )}
                             </div>
-                        )}
 
-                        {activeTab === 'skills' && (
-                            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                                <div className="space-y-8">
-                                    {Object.entries(skills).map(([category, items]: [string, any]) => {
-                                        if (!items || items.length === 0) return null;
-                                        return (
-                                            <div key={category}>
+                            {/* Skills Section */}
+                            <div id="skills" className="scroll-mt-24 space-y-6">
+                                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                    <Award className="h-5 w-5 text-gray-500" />
+                                    Skills
+                                </h3>
+                                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                                    <div className="space-y-8">
+                                        {Object.entries(skills).map(([category, items]: [string, any]) => {
+                                            if (!items || items.length === 0) return null;
+                                            return (
+                                                <div key={category}>
+                                                    <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                                                        {category.replace(/([A-Z])/g, ' $1').trim()}
+                                                    </h3>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {items.map((skill: string, i: number) => (
+                                                            <span key={i} className="px-3 py-1.5 rounded-lg bg-purple-50 text-purple-700 text-sm font-medium border border-purple-100">
+                                                                {skill}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                        {candidate.tags && (
+                                            <div>
                                                 <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                                                    {category.replace(/([A-Z])/g, ' $1').trim()}
+                                                    Other Tags
                                                 </h3>
                                                 <div className="flex flex-wrap gap-2">
-                                                    {items.map((skill: string, i: number) => (
-                                                        <span key={i} className="px-3 py-1.5 rounded-lg bg-purple-50 text-purple-700 text-sm font-medium border border-purple-100">
-                                                            {skill}
+                                                    {candidate.tags.map((tag: string, i: number) => (
+                                                        <span key={i} className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-sm font-medium">
+                                                            {tag}
                                                         </span>
                                                     ))}
                                                 </div>
                                             </div>
-                                        );
-                                    })}
-                                    {candidate.tags && (
-                                        <div>
-                                            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                                                Other Tags
-                                            </h3>
-                                            <div className="flex flex-wrap gap-2">
-                                                {candidate.tags.map((tag: string, i: number) => (
-                                                    <span key={i} className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-sm font-medium">
-                                                        {tag}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                        )}
+                        </div>
                     </div>
                 </div>
             </Drawer>
