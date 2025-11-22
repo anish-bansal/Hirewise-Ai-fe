@@ -4,8 +4,8 @@ import { Button } from '../ui/Button';
 import { motion } from 'framer-motion';
 import {
     Linkedin, Github, Mail, Phone, ExternalLink, MapPin,
-    Building2, GraduationCap, Download, Share2,
-    Briefcase, Code2, Award, BookOpen, DollarSign, Zap, FileText, X, Loader2
+    Building2, GraduationCap, Download,
+    Briefcase, Code2, Award, BookOpen, DollarSign, Zap, FileText, X, Loader2, Bot
 } from 'lucide-react';
 import { applicationsApi } from '../../api/applications';
 import { searchApi } from '../../api/search';
@@ -57,6 +57,7 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
     const resumeScore = scores.resumeScore ?? candidate.resumeScore ?? null;
     const githubScore = scores.githubPortfolioScore ?? null;
     const compensationScore = scores.compensationScore ?? null;
+    const aiToolsCompatibilityScore = scores.aiToolsCompatibilityScore ?? null;
     const compensationAnalysis = scores.compensationAnalysis;
 
     const scoreItems = [
@@ -99,6 +100,16 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
             bg: 'bg-green-100',
             barColor: 'text-green-600',
             description: compensationAnalysis || 'Salary expectation alignment'
+        },
+        {
+            id: 'ai-tools',
+            label: 'AI Tools Match',
+            value: aiToolsCompatibilityScore,
+            icon: Bot,
+            color: 'text-indigo-600',
+            bg: 'bg-indigo-100',
+            barColor: 'text-indigo-600',
+            description: 'Familiarity with required AI tools'
         }
     ].filter(item => item.value !== undefined && item.value !== null || item.value === null); // Keep nulls for NA handling
 
@@ -245,34 +256,33 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
 
     return (
         <>
-            <Drawer isOpen={isOpen} onClose={onClose} title="Candidate Profile" width="max-w-3xl">
+            <Drawer isOpen={isOpen} onClose={onClose} title="Candidate Profile" width="max-w-6xl">
                 <div className="flex flex-col h-full">
                     {/* Profile Header */}
                     <div className="px-8 py-6 bg-white border-b border-gray-100">
-                        <div className="flex items-start justify-between mb-6">
-                            <div className="flex items-center gap-4">
-                                <div className="h-16 w-16 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 text-2xl font-bold">
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-5">
+                                <div className="h-16 w-16 rounded-2xl bg-purple-100 flex items-center justify-center text-purple-600 text-2xl font-bold flex-shrink-0">
                                     {candidate.name?.charAt(0) || 'C'}
                                 </div>
-                                <div>
-                                    <h1 className="text-2xl font-bold text-gray-900">{candidate.name}</h1>
-                                    <p className="text-gray-500 text-sm mt-1 flex items-center gap-2">
-                                        {candidate.role || experience[0]?.title || 'Candidate'}
+                                <div className="min-w-0">
+                                    <h1 className="text-2xl font-bold text-gray-900 truncate">{candidate.name}</h1>
+                                    <div className="mt-1">
+                                        <p className="text-gray-700 font-medium truncate text-base">
+                                            {candidate.role || experience[0]?.title || 'Candidate'}
+                                        </p>
                                         {(candidate.location || experience[0]?.location) && (
-                                            <>
-                                                <span className="w-1 h-1 rounded-full bg-gray-300" />
-                                                <span className="flex items-center gap-1">
-                                                    <MapPin className="h-3 w-3" />
-                                                    {candidate.location || experience[0]?.location}
-                                                </span>
-                                            </>
+                                            <div className="flex items-center gap-1.5 text-gray-500 text-sm mt-1">
+                                                <MapPin className="h-3.5 w-3.5" />
+                                                {candidate.location || experience[0]?.location}
+                                            </div>
                                         )}
-                                    </p>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-3">
                                 {isRejected ? (
-                                    <div className="h-8 px-4 flex items-center gap-1.5 text-sm font-medium bg-red-50 text-red-700 border border-red-200 rounded-full">
+                                    <div className="h-9 px-4 flex items-center gap-1.5 text-sm font-medium bg-red-50 text-red-600 border border-red-100 rounded-full">
                                         <X className="h-4 w-4" />
                                         Rejected
                                     </div>
@@ -281,7 +291,7 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            className="gap-2 rounded-full text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 transition-colors"
+                                            className="h-9 px-4 gap-2 rounded-full text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-colors font-medium"
                                             onClick={handleReject}
                                             disabled={isRejecting || (fromRecruiterPage && !searchId) || (!fromRecruiterPage && !applicationId)}
                                         >
@@ -299,7 +309,7 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
                                         </Button>
                                         <Button
                                             size="sm"
-                                            className="gap-2 rounded-full bg-purple-600 hover:bg-purple-700 text-white border-transparent shadow-sm transition-all hover:shadow-md"
+                                            className="h-9 px-5 gap-2 rounded-full bg-[#8b5cf6] hover:bg-[#7c3aed] text-white border-transparent shadow-sm transition-all hover:shadow-md font-medium"
                                             onClick={handleOpenEmailSequence}
                                             disabled={isApprovingForSequence || !applicationId}
                                         >
@@ -318,14 +328,10 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
                                     </>
                                 )}
 
-                                <div className="h-6 w-px bg-gray-200 mx-1" />
 
-                                <Button variant="ghost" size="icon" className="rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100">
-                                    <Share2 className="h-4 w-4" />
-                                </Button>
                                 <Button
                                     size="sm"
-                                    className="gap-2"
+                                    className="h-9 px-5 gap-2 rounded-lg bg-[#111827] text-white hover:bg-gray-800 shadow-sm font-medium"
                                     onClick={handleDownloadResume}
                                     disabled={isDownloadingResume || !userId}
                                 >
@@ -340,9 +346,6 @@ export const CandidateProfileDrawer: React.FC<CandidateProfileDrawerProps> = ({
                                             Resume
                                         </>
                                     )}
-                                </Button>
-                                <Button variant="ghost" size="icon" className="rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100">
-                                    <Download className="h-4 w-4" />
                                 </Button>
                             </div>
                         </div>
