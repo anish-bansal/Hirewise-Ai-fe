@@ -193,9 +193,12 @@ export const searchApi = {
         }
     },
 
-    getSearchDetails: async (searchId: string): Promise<SearchDetails> => {
+    getSearchDetails: async (searchId: string, status?: 'shortlisted' | 'rejected'): Promise<SearchDetails> => {
         try {
-            const response = await request<SearchDetails>(`/api/users/search/${searchId}`, {
+            const url = status 
+                ? `/api/users/search/${searchId}?status=${status}`
+                : `/api/users/search/${searchId}`;
+            const response = await request<SearchDetails>(url, {
                 method: 'GET'
             });
             return response;

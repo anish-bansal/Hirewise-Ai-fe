@@ -30,9 +30,11 @@ export interface CandidateCardProps {
     onShortlist?: (id: string) => void;
     onView?: (id: string) => void;
     query?: string; // For highlighting
+    isShortlisted?: boolean; // Whether this candidate is shortlisted
+    isRejected?: boolean; // Whether this candidate is rejected
 }
 
-export const CandidateCard: React.FC<CandidateCardProps> = ({ candidate, onShortlist, onView, query = '' }) => {
+export const CandidateCard: React.FC<CandidateCardProps> = ({ candidate, onShortlist, onView, query = '', isShortlisted = false, isRejected = false }) => {
 
     // Helper to highlight keywords
     const renderHighlightedBio = (text: string, keywords: string[] = []) => {
@@ -117,18 +119,29 @@ export const CandidateCard: React.FC<CandidateCardProps> = ({ candidate, onShort
                         </div>
 
                         <div className="flex items-center gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 gap-1.5 text-xs font-medium"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onShortlist?.(candidate.id);
-                                }}
-                            >
-                                <Bookmark className="h-3.5 w-3.5" />
-                                Shortlist
-                            </Button>
+                            {onShortlist && !isRejected && (
+                                <>
+                                    {isShortlisted ? (
+                                        <div className="h-8 px-3 flex items-center gap-1.5 text-xs font-medium bg-green-50 text-green-700 border border-green-200 rounded-md">
+                                            <Bookmark className="h-3.5 w-3.5 fill-green-600 text-green-600" />
+                                            Shortlisted
+                                        </div>
+                                    ) : (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="h-8 gap-1.5 text-xs font-medium"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onShortlist?.(candidate.id);
+                                            }}
+                                        >
+                                            <Bookmark className="h-3.5 w-3.5" />
+                                            Shortlist
+                                        </Button>
+                                    )}
+                                </>
+                            )}
                             <Button
                                 variant="ghost"
                                 size="icon"

@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { applicationsApi, type Application } from '../../api/applications';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
 import { CandidateCard } from '../../components/Recruiter/CandidateCard';
-import { Loader2, History, Clock, Users, CheckCircle, XCircle, Edit2, Play } from 'lucide-react';
+import { Loader2, History, Clock, Users, CheckCircle, XCircle, Edit2, Play, RefreshCw } from 'lucide-react';
 import { SearchBox } from '../../components/Recruiter/SearchBox';
 import { ResultSummary } from '../../components/Recruiter/ResultSummary';
 import { FilterDrawer } from '../../components/Recruiter/FilterDrawer';
@@ -55,6 +55,7 @@ const RecruiterDashboard = () => {
         setHasSearched(true);
         setIsSearching(true);
         setCurrentPage(page);
+        setIsPastSearchesOpen(false); // Hide past searches when performing a new search
 
         try {
             // Call the search API
@@ -158,6 +159,8 @@ const RecruiterDashboard = () => {
     };
 
     const [selectedCandidateForDrawer, setSelectedCandidateForDrawer] = useState<CandidateProfile | null>(null);
+    const [currentSearchIdForDrawer, setCurrentSearchIdForDrawer] = useState<string | null>(null);
+    const [isCandidateRejected, setIsCandidateRejected] = useState<boolean>(false);
     
     // Past Searches State
     const [isPastSearchesOpen, setIsPastSearchesOpen] = useState(false);
@@ -168,6 +171,9 @@ const RecruiterDashboard = () => {
     const [searchFilter, setSearchFilter] = useState<'all' | 'shortlisted' | 'rejected'>('all');
     const [shortlistedUsers, setShortlistedUsers] = useState<Set<string>>(new Set());
     const [rejectedUsers, setRejectedUsers] = useState<Set<string>>(new Set());
+    // Expanded past search state: { searchId: { filterType: 'shortlisted' | 'rejected' | 'all', profiles: CandidateProfile[], isLoading: boolean, shortlistedUsers?: string[], rejectedUsers?: string[] } }
+    const [expandedPastSearches, setExpandedPastSearches] = useState<Record<string, { filterType: 'shortlisted' | 'rejected' | 'all', profiles: CandidateProfile[], isLoading: boolean, shortlistedUsers?: string[], rejectedUsers?: string[] }>>({});
+    const [refreshingSearchId, setRefreshingSearchId] = useState<string | null>(null);
 
     const fetchPastSearches = async () => {
         setIsLoadingPastSearches(true);
@@ -185,8 +191,222 @@ const RecruiterDashboard = () => {
     const handleOpenPastSearches = () => {
         if (!isPastSearchesOpen) {
             fetchPastSearches();
+            // Clear search filters and results when showing past searches
+            setSearchResults([]);
+            setMatchCount(0);
+            setHasSearched(false);
+            setSearchQuery('');
+            setCurrentPage(1);
         }
         setIsPastSearchesOpen(!isPastSearchesOpen);
+    };
+
+    const handleRefreshSearch = async (searchId: string, event?: React.MouseEvent) => {
+        event?.stopPropagation();
+        setRefreshingSearchId(searchId);
+        try {
+            // Fetch updated search details
+            const details = await searchApi.getSearchDetails(searchId);
+            
+            // Update the past searches list with updated counts
+            setPastSearches(prev => prev.map(search => {
+                if ((search.searchId || search.id) === searchId) {
+                    return {
+                        ...search,
+                        shortlistedCount: details.shortlistedCount ?? search.shortlistedCount,
+                        rejectedCount: details.rejectedCount ?? search.rejectedCount,
+                        totalResults: details.totalResults ?? search.totalResults,
+                        totalMatches: details.totalMatches ?? search.totalMatches,
+                        updatedAt: details.updatedAt ?? search.updatedAt
+                    };
+                }
+                return search;
+            }));
+
+            // Update shortlisted and rejected users sets
+            if (details.shortlistedUsers && Array.isArray(details.shortlistedUsers)) {
+                setShortlistedUsers(prev => {
+                    const newSet = new Set(prev);
+                    details.shortlistedUsers!.forEach((id: string) => newSet.add(id));
+                    return newSet;
+                });
+            }
+            if (details.rejectedUsers && Array.isArray(details.rejectedUsers)) {
+                setRejectedUsers(prev => {
+                    const newSet = new Set(prev);
+                    details.rejectedUsers!.forEach((id: string) => newSet.add(id));
+                    return newSet;
+                });
+            }
+
+            // If this search is currently expanded, refresh the profiles
+            const expandedSearch = expandedPastSearches[searchId];
+            if (expandedSearch) {
+                // Re-fetch profiles based on current filter type
+                const filterType = expandedSearch.filterType;
+                
+                try {
+                    if (filterType === 'shortlisted') {
+                        // Extract userIds from shortlistedUsers array
+                        const shortlistedUserIds: string[] = [];
+                        if (details.shortlistedUsers && Array.isArray(details.shortlistedUsers)) {
+                            details.shortlistedUsers.forEach((user: any) => {
+                                if (typeof user === 'string') {
+                                    shortlistedUserIds.push(user);
+                                } else if (user && (user._id || user.id || user.userId)) {
+                                    shortlistedUserIds.push(user._id || user.id || user.userId);
+                                }
+                            });
+                        }
+                        
+                        // Fetch profiles only for shortlisted user IDs
+                        const profilePromises = shortlistedUserIds.map(async (userId) => {
+                            try {
+                                const profile = await searchApi.getUserProfile(userId);
+                                const snapshot = details.resultsSnapshot?.find((s: any) => s.userId === userId);
+                                return {
+                                    ...profile,
+                                    id: profile.id || userId,
+                                    _id: profile._id || userId,
+                                    matchScore: snapshot?.matchScore,
+                                    skillsMatched: snapshot?.skillsMatched,
+                                    recommendedAction: snapshot?.recommendedAction,
+                                } as CandidateProfile & { matchScore?: number; skillsMatched?: string[]; recommendedAction?: string };
+                            } catch (error) {
+                                console.error(`Failed to fetch profile for userId ${userId}:`, error);
+                                return null;
+                            }
+                        });
+                        
+                        const fetchedProfiles = await Promise.all(profilePromises);
+                        const shortlistedProfiles = fetchedProfiles.filter((p): p is CandidateProfile => p !== null);
+                        
+                        setExpandedPastSearches(prev => ({
+                            ...prev,
+                            [searchId]: { 
+                                ...prev[searchId],
+                                profiles: shortlistedProfiles,
+                                shortlistedUsers: shortlistedUserIds,
+                                rejectedUsers: []
+                            }
+                        }));
+                    } else if (filterType === 'rejected') {
+                        // Extract userIds from rejectedUsers array
+                        const rejectedUserIds: string[] = [];
+                        if (details.rejectedUsers && Array.isArray(details.rejectedUsers)) {
+                            details.rejectedUsers.forEach((user: any) => {
+                                if (typeof user === 'string') {
+                                    rejectedUserIds.push(user);
+                                } else if (user && (user._id || user.id || user.userId)) {
+                                    rejectedUserIds.push(user._id || user.id || user.userId);
+                                }
+                            });
+                        }
+                        
+                        // Fetch profiles only for rejected user IDs
+                        const profilePromises = rejectedUserIds.map(async (userId) => {
+                            try {
+                                const profile = await searchApi.getUserProfile(userId);
+                                const snapshot = details.resultsSnapshot?.find((s: any) => s.userId === userId);
+                                return {
+                                    ...profile,
+                                    id: profile.id || userId,
+                                    _id: profile._id || userId,
+                                    matchScore: snapshot?.matchScore,
+                                    skillsMatched: snapshot?.skillsMatched,
+                                    recommendedAction: snapshot?.recommendedAction,
+                                } as CandidateProfile & { matchScore?: number; skillsMatched?: string[]; recommendedAction?: string };
+                            } catch (error) {
+                                console.error(`Failed to fetch profile for userId ${userId}:`, error);
+                                return null;
+                            }
+                        });
+                        
+                        const fetchedProfiles = await Promise.all(profilePromises);
+                        const rejectedProfiles = fetchedProfiles.filter((p): p is CandidateProfile => p !== null);
+                        
+                        setExpandedPastSearches(prev => ({
+                            ...prev,
+                            [searchId]: { 
+                                ...prev[searchId],
+                                profiles: rejectedProfiles,
+                                shortlistedUsers: [],
+                                rejectedUsers: rejectedUserIds
+                            }
+                        }));
+                    } else {
+                        // For 'all', refresh all profiles
+                        let allCandidates: CandidateProfile[] = [];
+                        
+                        if (details.resultsSnapshot && Array.isArray(details.resultsSnapshot) && details.resultsSnapshot.length > 0) {
+                            const profilePromises = details.resultsSnapshot.map(async (snapshot: any) => {
+                                try {
+                                    const profile = await searchApi.getUserProfile(snapshot.userId);
+                                    return {
+                                        ...profile,
+                                        id: profile.id || snapshot.userId,
+                                        _id: profile._id || snapshot._id,
+                                        matchScore: snapshot.matchScore,
+                                        skillsMatched: snapshot.skillsMatched,
+                                        recommendedAction: snapshot.recommendedAction,
+                                    } as CandidateProfile & { matchScore?: number; skillsMatched?: string[]; recommendedAction?: string };
+                                } catch (error) {
+                                    console.error(`Failed to fetch profile for userId ${snapshot.userId}:`, error);
+                                    return null;
+                                }
+                            });
+                            
+                            const fetchedProfiles = await Promise.all(profilePromises);
+                            allCandidates = fetchedProfiles.filter((p): p is CandidateProfile => p !== null);
+                        } else {
+                            allCandidates = details.users || details.candidates || [];
+                        }
+                        
+                        // Extract userIds from shortlistedUsers and rejectedUsers arrays
+                        const shortlistedUserIds: string[] = [];
+                        const rejectedUserIds: string[] = [];
+                        
+                        if (details.shortlistedUsers && Array.isArray(details.shortlistedUsers)) {
+                            details.shortlistedUsers.forEach((user: any) => {
+                                if (typeof user === 'string') {
+                                    shortlistedUserIds.push(user);
+                                } else if (user && (user._id || user.id || user.userId)) {
+                                    shortlistedUserIds.push(user._id || user.id || user.userId);
+                                }
+                            });
+                        }
+                        
+                        if (details.rejectedUsers && Array.isArray(details.rejectedUsers)) {
+                            details.rejectedUsers.forEach((user: any) => {
+                                if (typeof user === 'string') {
+                                    rejectedUserIds.push(user);
+                                } else if (user && (user._id || user.id || user.userId)) {
+                                    rejectedUserIds.push(user._id || user.id || user.userId);
+                                }
+                            });
+                        }
+                        
+                        setExpandedPastSearches(prev => ({
+                            ...prev,
+                            [searchId]: { 
+                                ...prev[searchId],
+                                profiles: allCandidates,
+                                shortlistedUsers: shortlistedUserIds,
+                                rejectedUsers: rejectedUserIds
+                            }
+                        }));
+                    }
+                } catch (refreshError) {
+                    console.error('Failed to refresh profiles:', refreshError);
+                    // Don't throw - we've already updated the counts, which is the main goal
+                }
+            }
+        } catch (error) {
+            console.error('Failed to refresh search:', error);
+            alert('Failed to refresh search. Please try again.');
+        } finally {
+            setRefreshingSearchId(null);
+        }
     };
 
     const handleSearchClick = async (searchId: string, filterType: 'all' | 'shortlisted' | 'rejected' = 'all') => {
@@ -267,14 +487,282 @@ const RecruiterDashboard = () => {
         }
     };
 
+    const handleViewAll = async (searchId: string, event?: React.MouseEvent) => {
+        event?.stopPropagation();
+        
+        // If already expanded with all, collapse it
+        if (expandedPastSearches[searchId]?.filterType === 'all') {
+            setExpandedPastSearches(prev => {
+                const newState = { ...prev };
+                delete newState[searchId];
+                return newState;
+            });
+            return;
+        }
+
+        // Set loading state
+        setExpandedPastSearches(prev => ({
+            ...prev,
+            [searchId]: { filterType: 'all', profiles: [], isLoading: true }
+        }));
+
+        try {
+            const details = await searchApi.getSearchDetails(searchId);
+            
+            // Get all candidates from resultsSnapshot
+            let allCandidates: CandidateProfile[] = [];
+            
+            if (details.resultsSnapshot && Array.isArray(details.resultsSnapshot) && details.resultsSnapshot.length > 0) {
+                // Fetch user profiles for each userId in resultsSnapshot
+                const profilePromises = details.resultsSnapshot.map(async (snapshot) => {
+                    try {
+                        const profile = await searchApi.getUserProfile(snapshot.userId);
+                        return {
+                            ...profile,
+                            id: profile.id || snapshot.userId,
+                            _id: profile._id || snapshot._id,
+                            matchScore: snapshot.matchScore,
+                            skillsMatched: snapshot.skillsMatched,
+                            recommendedAction: snapshot.recommendedAction,
+                        } as CandidateProfile & { matchScore?: number; skillsMatched?: string[]; recommendedAction?: string };
+                    } catch (error) {
+                        console.error(`Failed to fetch profile for userId ${snapshot.userId}:`, error);
+                        return null;
+                    }
+                });
+                
+                const fetchedProfiles = await Promise.all(profilePromises);
+                allCandidates = fetchedProfiles.filter((p): p is CandidateProfile => p !== null);
+            } else {
+                // Fallback to existing users/candidates arrays
+                allCandidates = details.users || details.candidates || [];
+            }
+
+            // Update shortlisted and rejected users sets from the response
+            if (details.shortlistedUsers && Array.isArray(details.shortlistedUsers)) {
+                setShortlistedUsers(prev => {
+                    const newSet = new Set(prev);
+                    details.shortlistedUsers!.forEach((id: string) => newSet.add(id));
+                    return newSet;
+                });
+            }
+            if (details.rejectedUsers && Array.isArray(details.rejectedUsers)) {
+                setRejectedUsers(prev => {
+                    const newSet = new Set(prev);
+                    details.rejectedUsers!.forEach((id: string) => newSet.add(id));
+                    return newSet;
+                });
+            }
+
+            // Extract userIds from shortlistedUsers and rejectedUsers arrays
+            const shortlistedUserIds: string[] = [];
+            const rejectedUserIds: string[] = [];
+            
+            if (details.shortlistedUsers && Array.isArray(details.shortlistedUsers)) {
+                details.shortlistedUsers.forEach((user: any) => {
+                    if (typeof user === 'string') {
+                        shortlistedUserIds.push(user);
+                    } else if (user && (user._id || user.id || user.userId)) {
+                        shortlistedUserIds.push(user._id || user.id || user.userId);
+                    }
+                });
+            }
+            
+            if (details.rejectedUsers && Array.isArray(details.rejectedUsers)) {
+                details.rejectedUsers.forEach((user: any) => {
+                    if (typeof user === 'string') {
+                        rejectedUserIds.push(user);
+                    } else if (user && (user._id || user.id || user.userId)) {
+                        rejectedUserIds.push(user._id || user.id || user.userId);
+                    }
+                });
+            }
+
+            setExpandedPastSearches(prev => ({
+                ...prev,
+                [searchId]: { 
+                    filterType: 'all', 
+                    profiles: allCandidates, 
+                    isLoading: false,
+                    shortlistedUsers: shortlistedUserIds,
+                    rejectedUsers: rejectedUserIds
+                }
+            }));
+        } catch (error) {
+            console.error('Failed to fetch all profiles:', error);
+            setExpandedPastSearches(prev => ({
+                ...prev,
+                [searchId]: { filterType: 'all', profiles: [], isLoading: false }
+            }));
+        }
+    };
+
     const handleViewShortlisted = async (searchId: string, event: React.MouseEvent) => {
         event.stopPropagation();
-        await handleSearchClick(searchId, 'shortlisted');
+        
+        // If already expanded with shortlisted, collapse it
+        if (expandedPastSearches[searchId]?.filterType === 'shortlisted') {
+            setExpandedPastSearches(prev => {
+                const newState = { ...prev };
+                delete newState[searchId];
+                return newState;
+            });
+            return;
+        }
+
+        // Set loading state
+        setExpandedPastSearches(prev => ({
+            ...prev,
+            [searchId]: { filterType: 'shortlisted', profiles: [], isLoading: true }
+        }));
+
+        try {
+            // Call API without status parameter to get full search details
+            const details = await searchApi.getSearchDetails(searchId);
+            
+            // Extract userIds from shortlistedUsers array (could be objects with _id or just strings)
+            const shortlistedUserIds: string[] = [];
+            if (details.shortlistedUsers && Array.isArray(details.shortlistedUsers)) {
+                details.shortlistedUsers.forEach((user: any) => {
+                    if (typeof user === 'string') {
+                        shortlistedUserIds.push(user);
+                    } else if (user && (user._id || user.id || user.userId)) {
+                        shortlistedUserIds.push(user._id || user.id || user.userId);
+                    }
+                });
+                
+                // Update shortlisted users set
+                setShortlistedUsers(prev => {
+                    const newSet = new Set(prev);
+                    shortlistedUserIds.forEach((id: string) => newSet.add(id));
+                    return newSet;
+                });
+            }
+
+            // Fetch profiles only for shortlisted user IDs
+            const profilePromises = shortlistedUserIds.map(async (userId) => {
+                try {
+                    const profile = await searchApi.getUserProfile(userId);
+                    // Try to get match score from resultsSnapshot if available
+                    const snapshot = details.resultsSnapshot?.find((s: any) => s.userId === userId);
+                    return {
+                        ...profile,
+                        id: profile.id || userId,
+                        _id: profile._id || userId,
+                        matchScore: snapshot?.matchScore,
+                        skillsMatched: snapshot?.skillsMatched,
+                        recommendedAction: snapshot?.recommendedAction,
+                    } as CandidateProfile & { matchScore?: number; skillsMatched?: string[]; recommendedAction?: string };
+                } catch (error) {
+                    console.error(`Failed to fetch profile for userId ${userId}:`, error);
+                    return null;
+                }
+            });
+            
+            const fetchedProfiles = await Promise.all(profilePromises);
+            const shortlistedProfiles = fetchedProfiles.filter((p): p is CandidateProfile => p !== null);
+
+            setExpandedPastSearches(prev => ({
+                ...prev,
+                [searchId]: { 
+                    filterType: 'shortlisted', 
+                    profiles: shortlistedProfiles, 
+                    isLoading: false,
+                    shortlistedUsers: shortlistedUserIds,
+                    rejectedUsers: []
+                }
+            }));
+        } catch (error) {
+            console.error('Failed to fetch shortlisted profiles:', error);
+            setExpandedPastSearches(prev => ({
+                ...prev,
+                [searchId]: { filterType: 'shortlisted', profiles: [], isLoading: false }
+            }));
+        }
     };
 
     const handleViewRejected = async (searchId: string, event: React.MouseEvent) => {
         event.stopPropagation();
-        await handleSearchClick(searchId, 'rejected');
+        
+        // If already expanded with rejected, collapse it
+        if (expandedPastSearches[searchId]?.filterType === 'rejected') {
+            setExpandedPastSearches(prev => {
+                const newState = { ...prev };
+                delete newState[searchId];
+                return newState;
+            });
+            return;
+        }
+
+        // Set loading state
+        setExpandedPastSearches(prev => ({
+            ...prev,
+            [searchId]: { filterType: 'rejected', profiles: [], isLoading: true }
+        }));
+
+        try {
+            // Call API without status parameter to get full search details
+            const details = await searchApi.getSearchDetails(searchId);
+            
+            // Extract userIds from rejectedUsers array (could be objects with _id or just strings)
+            const rejectedUserIds: string[] = [];
+            if (details.rejectedUsers && Array.isArray(details.rejectedUsers)) {
+                details.rejectedUsers.forEach((user: any) => {
+                    if (typeof user === 'string') {
+                        rejectedUserIds.push(user);
+                    } else if (user && (user._id || user.id || user.userId)) {
+                        rejectedUserIds.push(user._id || user.id || user.userId);
+                    }
+                });
+                
+                // Update rejected users set
+                setRejectedUsers(prev => {
+                    const newSet = new Set(prev);
+                    rejectedUserIds.forEach((id: string) => newSet.add(id));
+                    return newSet;
+                });
+            }
+
+            // Fetch profiles only for rejected user IDs
+            const profilePromises = rejectedUserIds.map(async (userId) => {
+                try {
+                    const profile = await searchApi.getUserProfile(userId);
+                    // Try to get match score from resultsSnapshot if available
+                    const snapshot = details.resultsSnapshot?.find((s: any) => s.userId === userId);
+                    return {
+                        ...profile,
+                        id: profile.id || userId,
+                        _id: profile._id || userId,
+                        matchScore: snapshot?.matchScore,
+                        skillsMatched: snapshot?.skillsMatched,
+                        recommendedAction: snapshot?.recommendedAction,
+                    } as CandidateProfile & { matchScore?: number; skillsMatched?: string[]; recommendedAction?: string };
+                } catch (error) {
+                    console.error(`Failed to fetch profile for userId ${userId}:`, error);
+                    return null;
+                }
+            });
+            
+            const fetchedProfiles = await Promise.all(profilePromises);
+            const rejectedProfiles = fetchedProfiles.filter((p): p is CandidateProfile => p !== null);
+
+            setExpandedPastSearches(prev => ({
+                ...prev,
+                [searchId]: { 
+                    filterType: 'rejected', 
+                    profiles: rejectedProfiles, 
+                    isLoading: false,
+                    shortlistedUsers: [],
+                    rejectedUsers: rejectedUserIds
+                }
+            }));
+        } catch (error) {
+            console.error('Failed to fetch rejected profiles:', error);
+            setExpandedPastSearches(prev => ({
+                ...prev,
+                [searchId]: { filterType: 'rejected', profiles: [], isLoading: false }
+            }));
+        }
     };
 
     const handleShortlistUser = async (searchId: string, userId: string) => {
@@ -379,104 +867,204 @@ const RecruiterDashboard = () => {
                                     ) : (
                                         <div className="space-y-4">
                                             {pastSearches.map((search) => (
-                                                <Card
-                                                    key={search.id || search.searchId}
-                                                    className="hover:shadow-lg transition-all border-gray-200"
-                                                >
-                                                    <CardContent className="p-5">
-                                                        <div className="space-y-4">
-                                                            {/* Header Section */}
-                                                            <div className="flex items-start gap-4">
-                                                                <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-                                                                    <span className="text-purple-700 font-bold text-sm">
-                                                                        {(search.searchText || search.query) ? (search.searchText || search.query)!.charAt(0).toUpperCase() : 'S'}
-                                                                    </span>
-                                                                </div>
-                                                                <div className="flex-1 min-w-0">
-                                                                    {(search.searchText || search.query) && (
-                                                                        <h3 className="text-lg font-medium text-gray-900 mb-1">
-                                                                            {search.searchText || search.query}
-                                                                        </h3>
-                                                                    )}
-                                                                    <p className="text-sm text-gray-500">
-                                                                        Do these filters look good? ({search.totalResults || search.totalMatches || 0} matches)
-                                                                    </p>
-                                                                    {(search.createdAt || search.updatedAt) && (
-                                                                        <p className="text-xs text-gray-400 mt-1">
-                                                                            {formatDate(search.createdAt || search.updatedAt)}
+                                                <React.Fragment key={search.id || search.searchId}>
+                                                    <Card
+                                                        className="hover:shadow-lg transition-all border-gray-200"
+                                                    >
+                                                        <CardContent className="p-5">
+                                                            <div className="space-y-4">
+                                                                {/* Header Section */}
+                                                                <div className="flex items-start gap-4">
+                                                                    <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                                                                        <span className="text-purple-700 font-bold text-sm">
+                                                                            {(search.searchText || search.query) ? (search.searchText || search.query)!.charAt(0).toUpperCase() : 'S'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        {(search.searchText || search.query) && (
+                                                                            <h3 className="text-lg font-medium text-gray-900 mb-1">
+                                                                                {search.searchText || search.query}
+                                                                            </h3>
+                                                                        )}
+                                                                        <p className="text-sm text-gray-500">
+                                                                            Do these filters look good? ({search.totalResults || search.totalMatches || 0} matches)
                                                                         </p>
+                                                                        {(search.createdAt || search.updatedAt) && (
+                                                                            <p className="text-xs text-gray-400 mt-1">
+                                                                                {formatDate(search.createdAt || search.updatedAt)}
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        {isLoadingSearchDetails && (selectedSearchDetails?.searchId === (search.searchId || search.id) || selectedSearchDetails?.id === (search.searchId || search.id)) && (
+                                                                            <Loader2 className="h-5 w-5 animate-spin text-purple-600 flex-shrink-0" />
+                                                                        )}
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-8 w-8"
+                                                                            onClick={(e) => {
+                                                                                const id = search.searchId || search.id;
+                                                                                if (id) handleRefreshSearch(id, e);
+                                                                            }}
+                                                                            disabled={refreshingSearchId === (search.searchId || search.id)}
+                                                                            title="Refresh search"
+                                                                        >
+                                                                            {refreshingSearchId === (search.searchId || search.id) ? (
+                                                                                <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
+                                                                            ) : (
+                                                                                <RefreshCw className="h-4 w-4 text-gray-500 hover:text-purple-600" />
+                                                                            )}
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Stats Section */}
+                                                                <div className="flex items-center gap-6 text-sm">
+                                                                    {(search.totalResults !== undefined || search.totalMatches !== undefined) && (
+                                                                        <div className="flex items-center gap-2">
+                                                                            <Users className="h-4 w-4 text-gray-500" />
+                                                                            <span className="text-gray-700 font-medium">{search.totalResults || search.totalMatches || 0} matches</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {search.shortlistedCount !== undefined && (
+                                                                        <div className="flex items-center gap-2 text-green-600">
+                                                                            <CheckCircle className="h-4 w-4" />
+                                                                            <span className="font-medium">{search.shortlistedCount} shortlisted</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {search.rejectedCount !== undefined && (
+                                                                        <div className="flex items-center gap-2 text-red-600">
+                                                                            <XCircle className="h-4 w-4" />
+                                                                            <span className="font-medium">{search.rejectedCount} rejected</span>
+                                                                        </div>
                                                                     )}
                                                                 </div>
-                                                                {isLoadingSearchDetails && (selectedSearchDetails?.searchId === (search.searchId || search.id) || selectedSearchDetails?.id === (search.searchId || search.id)) && (
-                                                                    <Loader2 className="h-5 w-5 animate-spin text-purple-600 flex-shrink-0" />
-                                                                )}
-                                                            </div>
 
-                                                            {/* Stats Section */}
-                                                            <div className="flex items-center gap-6 text-sm">
-                                                                {(search.totalResults !== undefined || search.totalMatches !== undefined) && (
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Users className="h-4 w-4 text-gray-500" />
-                                                                        <span className="text-gray-700 font-medium">{search.totalResults || search.totalMatches || 0} matches</span>
+                                                                {/* Action Buttons - Only show if there are matches */}
+                                                                {(search.totalResults || search.totalMatches || 0) > 0 && (
+                                                                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            onClick={(e) => {
+                                                                                const id = search.searchId || search.id;
+                                                                                if (id) handleViewAll(id, e);
+                                                                            }}
+                                                                            disabled={!search.totalResults && !search.totalMatches || (search.totalResults || search.totalMatches || 0) === 0}
+                                                                            className={`${expandedPastSearches[search.searchId || search.id || '']?.filterType === 'all' ? 'bg-gray-50' : ''}`}
+                                                                        >
+                                                                            <Play className="h-4 w-4 mr-2" />
+                                                                            {expandedPastSearches[search.searchId || search.id || '']?.filterType === 'all' ? 'Hide All' : 'View All'}
+                                                                        </Button>
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            onClick={(e) => {
+                                                                                const id = search.searchId || search.id;
+                                                                                if (id) handleViewShortlisted(id, e);
+                                                                            }}
+                                                                            className={`border-green-200 text-green-700 hover:bg-green-50 ${expandedPastSearches[search.searchId || search.id || '']?.filterType === 'shortlisted' ? 'bg-green-50' : ''}`}
+                                                                            disabled={!search.shortlistedCount || search.shortlistedCount === 0}
+                                                                        >
+                                                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                                                            {expandedPastSearches[search.searchId || search.id || '']?.filterType === 'shortlisted' ? 'Hide Shortlisted' : 'View Shortlisted'}
+                                                                        </Button>
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            onClick={(e) => {
+                                                                                const id = search.searchId || search.id;
+                                                                                if (id) handleViewRejected(id, e);
+                                                                            }}
+                                                                            className={`border-red-200 text-red-700 hover:bg-red-50 ${expandedPastSearches[search.searchId || search.id || '']?.filterType === 'rejected' ? 'bg-red-50' : ''}`}
+                                                                            disabled={!search.rejectedCount || search.rejectedCount === 0}
+                                                                        >
+                                                                            <XCircle className="h-4 w-4 mr-2" />
+                                                                            {expandedPastSearches[search.searchId || search.id || '']?.filterType === 'rejected' ? 'Hide Rejected' : 'View Rejected'}
+                                                                        </Button>
                                                                     </div>
                                                                 )}
-                                                                {search.shortlistedCount !== undefined && (
-                                                                    <div className="flex items-center gap-2 text-green-600">
-                                                                        <CheckCircle className="h-4 w-4" />
-                                                                        <span className="font-medium">{search.shortlistedCount} shortlisted</span>
-                                                                    </div>
-                                                                )}
-                                                                {search.rejectedCount !== undefined && (
-                                                                    <div className="flex items-center gap-2 text-red-600">
-                                                                        <XCircle className="h-4 w-4" />
-                                                                        <span className="font-medium">{search.rejectedCount} rejected</span>
-                                                                    </div>
-                                                                )}
-                                                            </div>
 
-                                                            {/* Action Buttons */}
-                                                            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    onClick={() => {
-                                                                        const id = search.searchId || search.id;
-                                                                        if (id) handleSearchClick(id, 'all');
-                                                                    }}
-                                                                >
-                                                                    <Play className="h-4 w-4 mr-2" />
-                                                                    View All
-                                                                </Button>
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    onClick={(e) => {
-                                                                        const id = search.searchId || search.id;
-                                                                        if (id) handleViewShortlisted(id, e);
-                                                                    }}
-                                                                    className="border-green-200 text-green-700 hover:bg-green-50"
-                                                                    disabled={!search.shortlistedCount || search.shortlistedCount === 0}
-                                                                >
-                                                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                                                    View Shortlisted
-                                                                </Button>
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    onClick={(e) => {
-                                                                        const id = search.searchId || search.id;
-                                                                        if (id) handleViewRejected(id, e);
-                                                                    }}
-                                                                    className="border-red-200 text-red-700 hover:bg-red-50"
-                                                                    disabled={!search.rejectedCount || search.rejectedCount === 0}
-                                                                >
-                                                                    <XCircle className="h-4 w-4 mr-2" />
-                                                                    View Rejected
-                                                                </Button>
+                                                                {/* Expanded Profiles Section - Inside Card */}
+                                                                {expandedPastSearches[search.searchId || search.id || ''] && (
+                                                                    <div className="mt-6 pt-6 border-t border-gray-200 space-y-4">
+                                                                        {expandedPastSearches[search.searchId || search.id || '']?.isLoading ? (
+                                                                            <div className="flex items-center justify-center py-8">
+                                                                                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                                                                                <span className="ml-2 text-gray-500">Loading profiles...</span>
+                                                                            </div>
+                                                                        ) : expandedPastSearches[search.searchId || search.id || '']?.profiles.length === 0 ? (
+                                                                            <div className="text-center py-8 text-gray-500">
+                                                                                No {expandedPastSearches[search.searchId || search.id || '']?.filterType} profiles found.
+                                                                            </div>
+                                                                        ) : (
+                                                                            expandedPastSearches[search.searchId || search.id || '']?.profiles.map((candidate) => {
+                                                                                const resume = candidate.parsedResume;
+                                                                                const experience = resume?.experience?.[0];
+                                                                                const education = resume?.education?.[0];
+                                                                                
+                                                                                const candidateData = {
+                                                                                    id: candidate.id || candidate._id || '',
+                                                                                    name: candidate.name || candidate.fullName || 'Unknown',
+                                                                                    email: candidate.email || resume?.contact?.email,
+                                                                                    phone: candidate.phone || resume?.contact?.phone,
+                                                                                    role: experience?.title || candidate.currentRole?.title || candidate.currentRole?.position,
+                                                                                    company: experience?.company || candidate.currentRole?.company || candidate.currentRole?.companyName,
+                                                                                    location: experience?.location || candidate.currentRole?.location || candidate.currentRole?.city,
+                                                                                    education: education ? `${education.degree} ${education.field ? `, ${education.field}` : ''} at ${education.institution}` :
+                                                                                        (candidate.education ? `${candidate.education.degree || ''} ${candidate.education.field || ''} at ${candidate.education.university || ''}` : undefined),
+                                                                                    bio: candidate.resumeSummary || candidate.bio || candidate.summary || candidate.description,
+                                                                                    skills: candidate.tags || candidate.skills || [],
+                                                                                    socialLinks: {
+                                                                                        linkedin: resume?.contact?.linkedin || candidate.linkedin,
+                                                                                        github: resume?.contact?.github || candidate.github,
+                                                                                        portfolio: resume?.contact?.portfolio || candidate.portfolio || candidate.website
+                                                                                    }
+                                                                                };
+
+                                                                                const userId = candidate.id || candidate._id || '';
+                                                                                // Check if shortlisted: search must have shortlistedCount > 0 AND userId must be in this search's shortlistedUsers
+                                                                                const searchShortlistedUsers = expandedPastSearches[search.searchId || search.id || '']?.shortlistedUsers || [];
+                                                                                const searchShortlistedCount = search.shortlistedCount || 0;
+                                                                                const isShortlisted = searchShortlistedCount > 0 && searchShortlistedUsers.includes(userId);
+                                                                                // Check if rejected: search must have rejectedCount > 0 AND userId must be in this search's rejectedUsers
+                                                                                const searchRejectedUsers = expandedPastSearches[search.searchId || search.id || '']?.rejectedUsers || [];
+                                                                                const searchRejectedCount = search.rejectedCount || 0;
+                                                                                const isRejected = searchRejectedCount > 0 && searchRejectedUsers.includes(userId);
+
+                                                                                return (
+                                                                                    <CandidateCard
+                                                                                        key={candidateData.id}
+                                                                                        candidate={candidateData}
+                                                                                        query={search.searchText || ''}
+                                                                                        isShortlisted={isShortlisted}
+                                                                                        isRejected={isRejected}
+                                                                                        onShortlist={async (id: string) => {
+                                                                                            const searchId = search.searchId || search.id || '';
+                                                                                            const candidateUserId = candidate.id || candidate._id || id;
+                                                                                            await handleShortlistUser(searchId, candidateUserId);
+                                                                                        }}
+                                                                                        onView={() => {
+                                                                                            setSelectedCandidateForDrawer(candidate);
+                                                                                            const searchId = search.searchId || search.id || '';
+                                                                                            setCurrentSearchIdForDrawer(searchId || null);
+                                                                                            // Check if candidate is rejected
+                                                                                            const userId = candidate.id || candidate._id || '';
+                                                                                            const searchRejectedUsers = expandedPastSearches[searchId]?.rejectedUsers || [];
+                                                                                            const searchRejectedCount = search.rejectedCount || 0;
+                                                                                            setIsCandidateRejected(searchRejectedCount > 0 && searchRejectedUsers.includes(userId));
+                                                                                        }}
+                                                                                    />
+                                                                                );
+                                                                            })
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        </div>
-                                                    </CardContent>
+                                                        </CardContent>
                                                 </Card>
+                                                </React.Fragment>
                                             ))}
                                         </div>
                                     )}
@@ -516,104 +1104,204 @@ const RecruiterDashboard = () => {
                                     ) : (
                                         <div className="space-y-4">
                                             {pastSearches.map((search) => (
-                                                <Card
-                                                    key={search.id || search.searchId}
-                                                    className="hover:shadow-lg transition-all border-gray-200"
-                                                >
-                                                    <CardContent className="p-5">
-                                                        <div className="space-y-4">
-                                                            {/* Header Section */}
-                                                            <div className="flex items-start gap-4">
-                                                                <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-                                                                    <span className="text-purple-700 font-bold text-sm">
-                                                                        {(search.searchText || search.query) ? (search.searchText || search.query)!.charAt(0).toUpperCase() : 'S'}
-                                                                    </span>
-                                                                </div>
-                                                                <div className="flex-1 min-w-0">
-                                                                    {(search.searchText || search.query) && (
-                                                                        <h3 className="text-lg font-medium text-gray-900 mb-1">
-                                                                            {search.searchText || search.query}
-                                                                        </h3>
-                                                                    )}
-                                                                    <p className="text-sm text-gray-500">
-                                                                        Do these filters look good? ({search.totalResults || search.totalMatches || 0} matches)
-                                                                    </p>
-                                                                    {(search.createdAt || search.updatedAt) && (
-                                                                        <p className="text-xs text-gray-400 mt-1">
-                                                                            {formatDate(search.createdAt || search.updatedAt)}
+                                                <React.Fragment key={search.id || search.searchId}>
+                                                    <Card
+                                                        className="hover:shadow-lg transition-all border-gray-200"
+                                                    >
+                                                        <CardContent className="p-5">
+                                                            <div className="space-y-4">
+                                                                {/* Header Section */}
+                                                                <div className="flex items-start gap-4">
+                                                                    <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                                                                        <span className="text-purple-700 font-bold text-sm">
+                                                                            {(search.searchText || search.query) ? (search.searchText || search.query)!.charAt(0).toUpperCase() : 'S'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        {(search.searchText || search.query) && (
+                                                                            <h3 className="text-lg font-medium text-gray-900 mb-1">
+                                                                                {search.searchText || search.query}
+                                                                            </h3>
+                                                                        )}
+                                                                        <p className="text-sm text-gray-500">
+                                                                            Do these filters look good? ({search.totalResults || search.totalMatches || 0} matches)
                                                                         </p>
+                                                                        {(search.createdAt || search.updatedAt) && (
+                                                                            <p className="text-xs text-gray-400 mt-1">
+                                                                                {formatDate(search.createdAt || search.updatedAt)}
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        {isLoadingSearchDetails && (selectedSearchDetails?.searchId === (search.searchId || search.id) || selectedSearchDetails?.id === (search.searchId || search.id)) && (
+                                                                            <Loader2 className="h-5 w-5 animate-spin text-purple-600 flex-shrink-0" />
+                                                                        )}
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-8 w-8"
+                                                                            onClick={(e) => {
+                                                                                const id = search.searchId || search.id;
+                                                                                if (id) handleRefreshSearch(id, e);
+                                                                            }}
+                                                                            disabled={refreshingSearchId === (search.searchId || search.id)}
+                                                                            title="Refresh search"
+                                                                        >
+                                                                            {refreshingSearchId === (search.searchId || search.id) ? (
+                                                                                <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
+                                                                            ) : (
+                                                                                <RefreshCw className="h-4 w-4 text-gray-500 hover:text-purple-600" />
+                                                                            )}
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Stats Section */}
+                                                                <div className="flex items-center gap-6 text-sm">
+                                                                    {(search.totalResults !== undefined || search.totalMatches !== undefined) && (
+                                                                        <div className="flex items-center gap-2">
+                                                                            <Users className="h-4 w-4 text-gray-500" />
+                                                                            <span className="text-gray-700 font-medium">{search.totalResults || search.totalMatches || 0} matches</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {search.shortlistedCount !== undefined && (
+                                                                        <div className="flex items-center gap-2 text-green-600">
+                                                                            <CheckCircle className="h-4 w-4" />
+                                                                            <span className="font-medium">{search.shortlistedCount} shortlisted</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {search.rejectedCount !== undefined && (
+                                                                        <div className="flex items-center gap-2 text-red-600">
+                                                                            <XCircle className="h-4 w-4" />
+                                                                            <span className="font-medium">{search.rejectedCount} rejected</span>
+                                                                        </div>
                                                                     )}
                                                                 </div>
-                                                                {isLoadingSearchDetails && (selectedSearchDetails?.searchId === (search.searchId || search.id) || selectedSearchDetails?.id === (search.searchId || search.id)) && (
-                                                                    <Loader2 className="h-5 w-5 animate-spin text-purple-600 flex-shrink-0" />
-                                                                )}
-                                                            </div>
 
-                                                            {/* Stats Section */}
-                                                            <div className="flex items-center gap-6 text-sm">
-                                                                {(search.totalResults !== undefined || search.totalMatches !== undefined) && (
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Users className="h-4 w-4 text-gray-500" />
-                                                                        <span className="text-gray-700 font-medium">{search.totalResults || search.totalMatches || 0} matches</span>
+                                                                {/* Action Buttons - Only show if there are matches */}
+                                                                {(search.totalResults || search.totalMatches || 0) > 0 && (
+                                                                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            onClick={(e) => {
+                                                                                const id = search.searchId || search.id;
+                                                                                if (id) handleViewAll(id, e);
+                                                                            }}
+                                                                            disabled={!search.totalResults && !search.totalMatches || (search.totalResults || search.totalMatches || 0) === 0}
+                                                                            className={`${expandedPastSearches[search.searchId || search.id || '']?.filterType === 'all' ? 'bg-gray-50' : ''}`}
+                                                                        >
+                                                                            <Play className="h-4 w-4 mr-2" />
+                                                                            {expandedPastSearches[search.searchId || search.id || '']?.filterType === 'all' ? 'Hide All' : 'View All'}
+                                                                        </Button>
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            onClick={(e) => {
+                                                                                const id = search.searchId || search.id;
+                                                                                if (id) handleViewShortlisted(id, e);
+                                                                            }}
+                                                                            className={`border-green-200 text-green-700 hover:bg-green-50 ${expandedPastSearches[search.searchId || search.id || '']?.filterType === 'shortlisted' ? 'bg-green-50' : ''}`}
+                                                                            disabled={!search.shortlistedCount || search.shortlistedCount === 0}
+                                                                        >
+                                                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                                                            {expandedPastSearches[search.searchId || search.id || '']?.filterType === 'shortlisted' ? 'Hide Shortlisted' : 'View Shortlisted'}
+                                                                        </Button>
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            onClick={(e) => {
+                                                                                const id = search.searchId || search.id;
+                                                                                if (id) handleViewRejected(id, e);
+                                                                            }}
+                                                                            className={`border-red-200 text-red-700 hover:bg-red-50 ${expandedPastSearches[search.searchId || search.id || '']?.filterType === 'rejected' ? 'bg-red-50' : ''}`}
+                                                                            disabled={!search.rejectedCount || search.rejectedCount === 0}
+                                                                        >
+                                                                            <XCircle className="h-4 w-4 mr-2" />
+                                                                            {expandedPastSearches[search.searchId || search.id || '']?.filterType === 'rejected' ? 'Hide Rejected' : 'View Rejected'}
+                                                                        </Button>
                                                                     </div>
                                                                 )}
-                                                                {search.shortlistedCount !== undefined && (
-                                                                    <div className="flex items-center gap-2 text-green-600">
-                                                                        <CheckCircle className="h-4 w-4" />
-                                                                        <span className="font-medium">{search.shortlistedCount} shortlisted</span>
-                                                                    </div>
-                                                                )}
-                                                                {search.rejectedCount !== undefined && (
-                                                                    <div className="flex items-center gap-2 text-red-600">
-                                                                        <XCircle className="h-4 w-4" />
-                                                                        <span className="font-medium">{search.rejectedCount} rejected</span>
-                                                                    </div>
-                                                                )}
-                                                            </div>
 
-                                                            {/* Action Buttons */}
-                                                            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    onClick={() => {
-                                                                        const id = search.searchId || search.id;
-                                                                        if (id) handleSearchClick(id, 'all');
-                                                                    }}
-                                                                >
-                                                                    <Play className="h-4 w-4 mr-2" />
-                                                                    View All
-                                                                </Button>
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    onClick={(e) => {
-                                                                        const id = search.searchId || search.id;
-                                                                        if (id) handleViewShortlisted(id, e);
-                                                                    }}
-                                                                    className="border-green-200 text-green-700 hover:bg-green-50"
-                                                                    disabled={!search.shortlistedCount || search.shortlistedCount === 0}
-                                                                >
-                                                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                                                    View Shortlisted
-                                                                </Button>
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    onClick={(e) => {
-                                                                        const id = search.searchId || search.id;
-                                                                        if (id) handleViewRejected(id, e);
-                                                                    }}
-                                                                    className="border-red-200 text-red-700 hover:bg-red-50"
-                                                                    disabled={!search.rejectedCount || search.rejectedCount === 0}
-                                                                >
-                                                                    <XCircle className="h-4 w-4 mr-2" />
-                                                                    View Rejected
-                                                                </Button>
+                                                                {/* Expanded Profiles Section - Inside Card */}
+                                                                {expandedPastSearches[search.searchId || search.id || ''] && (
+                                                                    <div className="mt-6 pt-6 border-t border-gray-200 space-y-4">
+                                                                        {expandedPastSearches[search.searchId || search.id || '']?.isLoading ? (
+                                                                            <div className="flex items-center justify-center py-8">
+                                                                                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                                                                                <span className="ml-2 text-gray-500">Loading profiles...</span>
+                                                                            </div>
+                                                                        ) : expandedPastSearches[search.searchId || search.id || '']?.profiles.length === 0 ? (
+                                                                            <div className="text-center py-8 text-gray-500">
+                                                                                No {expandedPastSearches[search.searchId || search.id || '']?.filterType} profiles found.
+                                                                            </div>
+                                                                        ) : (
+                                                                            expandedPastSearches[search.searchId || search.id || '']?.profiles.map((candidate) => {
+                                                                                const resume = candidate.parsedResume;
+                                                                                const experience = resume?.experience?.[0];
+                                                                                const education = resume?.education?.[0];
+                                                                                
+                                                                                const candidateData = {
+                                                                                    id: candidate.id || candidate._id || '',
+                                                                                    name: candidate.name || candidate.fullName || 'Unknown',
+                                                                                    email: candidate.email || resume?.contact?.email,
+                                                                                    phone: candidate.phone || resume?.contact?.phone,
+                                                                                    role: experience?.title || candidate.currentRole?.title || candidate.currentRole?.position,
+                                                                                    company: experience?.company || candidate.currentRole?.company || candidate.currentRole?.companyName,
+                                                                                    location: experience?.location || candidate.currentRole?.location || candidate.currentRole?.city,
+                                                                                    education: education ? `${education.degree} ${education.field ? `, ${education.field}` : ''} at ${education.institution}` :
+                                                                                        (candidate.education ? `${candidate.education.degree || ''} ${candidate.education.field || ''} at ${candidate.education.university || ''}` : undefined),
+                                                                                    bio: candidate.resumeSummary || candidate.bio || candidate.summary || candidate.description,
+                                                                                    skills: candidate.tags || candidate.skills || [],
+                                                                                    socialLinks: {
+                                                                                        linkedin: resume?.contact?.linkedin || candidate.linkedin,
+                                                                                        github: resume?.contact?.github || candidate.github,
+                                                                                        portfolio: resume?.contact?.portfolio || candidate.portfolio || candidate.website
+                                                                                    }
+                                                                                };
+
+                                                                                const userId = candidate.id || candidate._id || '';
+                                                                                // Check if shortlisted: search must have shortlistedCount > 0 AND userId must be in this search's shortlistedUsers
+                                                                                const searchShortlistedUsers = expandedPastSearches[search.searchId || search.id || '']?.shortlistedUsers || [];
+                                                                                const searchShortlistedCount = search.shortlistedCount || 0;
+                                                                                const isShortlisted = searchShortlistedCount > 0 && searchShortlistedUsers.includes(userId);
+                                                                                // Check if rejected: search must have rejectedCount > 0 AND userId must be in this search's rejectedUsers
+                                                                                const searchRejectedUsers = expandedPastSearches[search.searchId || search.id || '']?.rejectedUsers || [];
+                                                                                const searchRejectedCount = search.rejectedCount || 0;
+                                                                                const isRejected = searchRejectedCount > 0 && searchRejectedUsers.includes(userId);
+
+                                                                                return (
+                                                                                    <CandidateCard
+                                                                                        key={candidateData.id}
+                                                                                        candidate={candidateData}
+                                                                                        query={search.searchText || ''}
+                                                                                        isShortlisted={isShortlisted}
+                                                                                        isRejected={isRejected}
+                                                                                        onShortlist={async (id: string) => {
+                                                                                            const searchId = search.searchId || search.id || '';
+                                                                                            const candidateUserId = candidate.id || candidate._id || id;
+                                                                                            await handleShortlistUser(searchId, candidateUserId);
+                                                                                        }}
+                                                                                        onView={() => {
+                                                                                            setSelectedCandidateForDrawer(candidate);
+                                                                                            const searchId = search.searchId || search.id || '';
+                                                                                            setCurrentSearchIdForDrawer(searchId || null);
+                                                                                            // Check if candidate is rejected
+                                                                                            const userId = candidate.id || candidate._id || '';
+                                                                                            const searchRejectedUsers = expandedPastSearches[searchId]?.rejectedUsers || [];
+                                                                                            const searchRejectedCount = search.rejectedCount || 0;
+                                                                                            setIsCandidateRejected(searchRejectedCount > 0 && searchRejectedUsers.includes(userId));
+                                                                                        }}
+                                                                                    />
+                                                                                );
+                                                                            })
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        </div>
-                                                    </CardContent>
+                                                        </CardContent>
                                                 </Card>
+                                                </React.Fragment>
                                             ))}
                                         </div>
                                     )}
@@ -674,20 +1362,51 @@ const RecruiterDashboard = () => {
                                             }
                                         };
 
+                                        const userId = candidate.id || candidate._id || (candidate as any).userId || candidateData.id;
+                                        // Check if shortlisted: search must have shortlistedCount > 0 AND userId must be in this search's shortlistedUsers
+                                        const searchShortlistedUsers = selectedSearchDetails?.shortlistedUsers || [];
+                                        const searchShortlistedCount = selectedSearchDetails?.shortlistedCount || 0;
+                                        // Extract userIds from shortlistedUsers array (could be objects or strings)
+                                        const shortlistedUserIds = searchShortlistedUsers.map((user: any) => {
+                                            if (typeof user === 'string') return user;
+                                            return user?._id || user?.id || user?.userId || '';
+                                        }).filter(Boolean);
+                                        const isShortlisted = searchShortlistedCount > 0 && shortlistedUserIds.includes(userId);
+                                        // Check if rejected: search must have rejectedCount > 0 AND userId must be in this search's rejectedUsers
+                                        const searchRejectedUsers = selectedSearchDetails?.rejectedUsers || [];
+                                        const searchRejectedCount = selectedSearchDetails?.rejectedCount || 0;
+                                        // Extract userIds from rejectedUsers array (could be objects or strings)
+                                        const rejectedUserIds = searchRejectedUsers.map((user: any) => {
+                                            if (typeof user === 'string') return user;
+                                            return user?._id || user?.id || user?.userId || '';
+                                        }).filter(Boolean);
+                                        const isRejected = searchRejectedCount > 0 && rejectedUserIds.includes(userId);
+
                                         return (
                                             <CandidateCard
                                                 key={candidateData.id}
                                                 candidate={candidateData}
                                                 query={searchQuery}
+                                                isShortlisted={isShortlisted}
+                                                isRejected={isRejected}
                                                 onShortlist={async (id: string) => {
                                                     if (selectedSearchDetails?.searchId || selectedSearchDetails?.id) {
                                                         const searchId = selectedSearchDetails.searchId || selectedSearchDetails.id || '';
-                                                        const userId = candidate.id || candidate._id || id;
-                                                        await handleShortlistUser(searchId, userId);
+                                                        const candidateUserId = candidate.id || candidate._id || (candidate as any).userId || id;
+                                                        await handleShortlistUser(searchId, candidateUserId);
                                                     }
                                                 }}
                                                 onView={() => {
                                                     setSelectedCandidateForDrawer(candidate);
+                                                    // Check if candidate is rejected
+                                                    const userId = candidate.id || candidate._id || (candidate as any).userId || candidateData.id;
+                                                    const searchRejectedUsers = selectedSearchDetails?.rejectedUsers || [];
+                                                    const searchRejectedCount = selectedSearchDetails?.rejectedCount || 0;
+                                                    const rejectedUserIds = searchRejectedUsers.map((user: any) => {
+                                                        if (typeof user === 'string') return user;
+                                                        return user?._id || user?.id || user?.userId || '';
+                                                    }).filter(Boolean);
+                                                    setIsCandidateRejected(searchRejectedCount > 0 && rejectedUserIds.includes(userId));
                                                 }}
                                             />
                                         );
@@ -740,9 +1459,15 @@ const RecruiterDashboard = () => {
 
                 <CandidateProfileDrawer
                     isOpen={!!selectedCandidateForDrawer}
-                    onClose={() => setSelectedCandidateForDrawer(null)}
+                    onClose={() => {
+                        setSelectedCandidateForDrawer(null);
+                        setCurrentSearchIdForDrawer(null);
+                        setIsCandidateRejected(false);
+                    }}
                     candidate={selectedCandidateForDrawer}
                     fromRecruiterPage={true}
+                    searchId={currentSearchIdForDrawer || undefined}
+                    isRejected={isCandidateRejected}
                 />
             </div>
         </div>

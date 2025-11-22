@@ -236,16 +236,25 @@ export const applicationsApi = {
     },
 
     approveLevel1: async (id: string) => {
-        return request<{ success: boolean }>(`/api/applications/${id}/approve-level1`, {
+        return request<{ 
+            success: boolean; 
+            emailData?: { 
+                subject?: string; 
+                html?: string;
+                text?: string;
+                preview_text?: string;
+                to?: string;
+            } 
+        }>(`/api/applications/${id}/approve-level1`, {
             method: 'POST'
         });
     },
 
-    reject: async (_id: string) => {
-        // Backend doesn't have a specific reject endpoint in the collection yet.
-        // We'll simulate success for now to keep UI functional.
-        await new Promise(resolve => setTimeout(resolve, 500));
-        return { success: true };
+    reject: async (applicationId: string) => {
+        return request<{ success: boolean }>(`/api/applications/${applicationId}/reject`, {
+            method: 'POST',
+            body: JSON.stringify({})
+        });
     },
 
     batchValidateResumes: async (jobId: string, resumeFiles: File[]) => {

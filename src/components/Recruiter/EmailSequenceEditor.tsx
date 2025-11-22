@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
     ChevronLeft, Plus, Mail, Phone,
@@ -33,6 +33,26 @@ export const EmailSequenceEditor: React.FC<EmailSequenceEditorProps> = ({
     const [activeStepId, setActiveStepId] = useState(1);
     const [isAddStepOpen, setIsAddStepOpen] = useState(false);
     const [subject, setSubject] = useState(initialSubject || "Congratulations! You've been approved for the next round");
+
+    // Update state when initial props change (when component opens with new data)
+    useEffect(() => {
+        if (isOpen) {
+            console.log('EmailSequenceEditor useEffect triggered - Subject:', initialSubject, 'Content:', initialContent?.substring(0, 50) + '...');
+            if (initialSubject) {
+                console.log('Setting subject to:', initialSubject);
+                setSubject(initialSubject);
+            }
+            if (initialContent) {
+                console.log('Setting content, length:', initialContent.length);
+                setSteps([{ id: 1, type: 'Email', label: 'Step 1', content: initialContent }]);
+                setActiveStepId(1); // Ensure we're on step 1
+            }
+        } else {
+            // Reset when closed
+            setSteps([{ id: 1, type: 'Email', label: 'Step 1', content: '' }]);
+            setSubject("Congratulations! You've been approved for the next round");
+        }
+    }, [isOpen, initialSubject, initialContent]);
 
     // Derived state for active step
     const activeStep = steps.find(s => s.id === activeStepId) || steps[0];

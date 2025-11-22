@@ -18,6 +18,7 @@ const JobDetailPage = () => {
     const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
     const [isImportingResumes, setIsImportingResumes] = useState(false);
     const [importMessage, setImportMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [activeTab, setActiveTab] = useState<'all' | 'approved' | 'rejected' | 'pending'>('all');
 
     useEffect(() => {
         const fetchJob = async () => {
@@ -38,10 +39,21 @@ const JobDetailPage = () => {
         if (!jobId || !job) return; // Only fetch if jobId exists and job is loaded
         setIsLoadingApplications(true);
         try {
-            const data = await applicationsApi.getByJobId(jobId, {
+            const params: { sortBy: string; sortOrder: 'desc'; status?: string } = {
                 sortBy: 'score',
                 sortOrder: 'desc'
-            });
+            };
+            
+            // Add status parameter based on active tab
+            if (activeTab === 'approved') {
+                params.status = 'approved';
+            } else if (activeTab === 'rejected') {
+                params.status = 'rejected';
+            } else if (activeTab === 'pending') {
+                params.status = 'pending';
+            }
+            
+            const data = await applicationsApi.getByJobId(jobId, params);
             // Ensure data is always an array
             setApplications(Array.isArray(data) ? data : []);
         } catch (error: unknown) {
@@ -57,7 +69,7 @@ const JobDetailPage = () => {
         } finally {
             setIsLoadingApplications(false);
         }
-    }, [jobId, job]);
+    }, [jobId, job, activeTab]);
 
     useEffect(() => {
         // Only fetch applications after job is successfully loaded
@@ -225,6 +237,55 @@ const JobDetailPage = () => {
                             </div>
                         </CardHeader>
                         <CardContent>
+                            {/* Tabs */}
+                            <div className="border-b border-gray-200 mb-6">
+                                <div className="flex gap-6">
+                                    <button
+                                        onClick={() => setActiveTab('all')}
+                                        className={`
+                                            py-3 text-sm font-medium border-b-2 transition-colors
+                                            ${activeTab === 'all'
+                                                ? 'border-purple-600 text-purple-600'
+                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
+                                        `}
+                                    >
+                                        All
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('approved')}
+                                        className={`
+                                            py-3 text-sm font-medium border-b-2 transition-colors
+                                            ${activeTab === 'approved'
+                                                ? 'border-purple-600 text-purple-600'
+                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
+                                        `}
+                                    >
+                                        Approved
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('rejected')}
+                                        className={`
+                                            py-3 text-sm font-medium border-b-2 transition-colors
+                                            ${activeTab === 'rejected'
+                                                ? 'border-purple-600 text-purple-600'
+                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
+                                        `}
+                                    >
+                                        Rejected
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('pending')}
+                                        className={`
+                                            py-3 text-sm font-medium border-b-2 transition-colors
+                                            ${activeTab === 'pending'
+                                                ? 'border-purple-600 text-purple-600'
+                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
+                                        `}
+                                    >
+                                        Pending
+                                    </button>
+                                </div>
+                            </div>
                             {isLoadingApplications ? (
                                 <div className="flex justify-center py-8">
                                     <Loader2 className="h-6 w-6 animate-spin" />
@@ -272,7 +333,6 @@ const JobDetailPage = () => {
                                             <CandidateCard
                                                 key={candidateData.id}
                                                 candidate={candidateData}
-                                                onShortlist={(id) => console.log('Shortlist', id)}
                                                 onView={(id) => setSelectedCandidateId(id)}
                                             />
                                         );
